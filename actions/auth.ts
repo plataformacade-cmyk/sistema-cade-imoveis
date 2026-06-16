@@ -62,10 +62,10 @@ export async function signup(
   if (error) return { error: traduzErro(error.message) };
 
   // Confirmação de e-mail está DESLIGADA no Supabase → o signUp já devolve
-  // sessão. Loga direto e manda pro painel (sem tela de "confirme o e-mail").
+  // sessão. Loga direto e leva ao onboarding (escolher buscar × anunciar).
   if (data.session) {
     revalidatePath("/", "layout");
-    redirect("/painel");
+    redirect("/cadastro/completar");
   }
 
   // Fallback (se algum dia ligarem a confirmação por e-mail).
