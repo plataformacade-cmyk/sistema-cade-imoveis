@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sheet";
 import {
   Activity,
+  Bell,
   Building2,
   CalendarDays,
   Handshake,
@@ -160,11 +161,13 @@ export function PainelShell({
   nome,
   email,
   papel,
+  naoLidas = 0,
   children,
 }: {
   nome: string;
   email: string;
   papel: Papel;
+  naoLidas?: number;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -214,6 +217,18 @@ export function PainelShell({
           </div>
           <div className="hidden md:block" />
           <div className="flex items-center gap-3">
+            <Link
+              href="/painel/notificacoes"
+              className="relative flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title="Notificações"
+            >
+              <Bell className="size-5" />
+              {naoLidas > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  {naoLidas > 9 ? "9+" : naoLidas}
+                </span>
+              )}
+            </Link>
             <Link
               href="/"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
