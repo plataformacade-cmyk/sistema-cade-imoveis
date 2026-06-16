@@ -13,6 +13,11 @@ export type Evento =
   | "imovel_arquivado"
   | "negocio_aberto"
   | "negocio_status_mudado"
+  | "visita_agendada"
+  | "visita_status_mudada"
+  | "termos_aceitos"
+  | "conta_excluida"
+  | "corretor_cadastrado"
   | "erro_nao_capturado";
 
 type Opts = {

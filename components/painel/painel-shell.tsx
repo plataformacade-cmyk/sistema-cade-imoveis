@@ -14,11 +14,13 @@ import {
 import {
   Activity,
   Building2,
+  CalendarDays,
   Handshake,
   LayoutDashboard,
   LogOut,
   Menu,
   Settings,
+  UserCheck,
   Users,
 } from "lucide-react";
 
@@ -33,7 +35,14 @@ const LINKS: Item[] = [
   { href: "/painel", label: "Dashboard", icon: LayoutDashboard, admin: false },
   { href: "/painel/imoveis", label: "Imóveis", icon: Building2, admin: false },
   { href: "/painel/negocios", label: "Negócios", icon: Handshake, admin: false },
+  { href: "/painel/visitas", label: "Visitas", icon: CalendarDays, admin: false },
   { href: "/painel/usuarios", label: "Usuários", icon: Users, admin: true },
+  {
+    href: "/painel/corretores",
+    label: "Corretores",
+    icon: UserCheck,
+    admin: true,
+  },
   {
     href: "/painel/observabilidade",
     label: "Observabilidade",
