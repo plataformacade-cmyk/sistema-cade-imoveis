@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/publico/site-header";
 import { SiteFooter } from "@/components/publico/site-footer";
 import { buttonVariants } from "@/components/ui/button";
+import { Reveal } from "@/components/publico/reveal";
 import {
   ClipboardList,
   Megaphone,
@@ -189,7 +190,7 @@ export default function ComoFuncionaPage() {
       <main className="flex-1">
         {/* Hero */}
         <section className="border-b bg-muted/30">
-          <div className="mx-auto max-w-4xl px-4 py-16 text-center md:px-6 md:py-24">
+          <Reveal className="mx-auto block max-w-4xl px-4 py-16 text-center md:px-6 md:py-24">
             <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
               Simples do começo ao fim
             </span>
@@ -201,28 +202,32 @@ export default function ComoFuncionaPage() {
               tirou a burocracia do caminho. Veja como é fácil — em poucos passos,
               do seu jeito.
             </p>
-          </div>
+          </Reveal>
         </section>
 
         {/* Trilhas */}
         <section className="mx-auto max-w-7xl space-y-10 px-4 py-16 md:px-6 md:py-24">
-          <Trilha
-            subtitulo="Para quem anuncia"
-            titulo="Coloque seu imóvel para a cidade ver"
-            cor="bg-primary/10 text-primary"
-            passos={PASSOS_ANUNCIA}
-          />
-          <Trilha
-            subtitulo="Para quem busca"
-            titulo="Encontre o lar que combina com você"
-            cor="bg-primary/10 text-primary"
-            passos={PASSOS_BUSCA}
-          />
+          <Reveal>
+            <Trilha
+              subtitulo="Para quem anuncia"
+              titulo="Coloque seu imóvel para a cidade ver"
+              cor="bg-primary/10 text-primary"
+              passos={PASSOS_ANUNCIA}
+            />
+          </Reveal>
+          <Reveal delay={0.1}>
+            <Trilha
+              subtitulo="Para quem busca"
+              titulo="Encontre o lar que combina com você"
+              cor="bg-primary/10 text-primary"
+              passos={PASSOS_BUSCA}
+            />
+          </Reveal>
         </section>
 
         {/* FAQ */}
         <section className="border-y bg-muted/30">
-          <div className="mx-auto max-w-3xl px-4 py-16 md:px-6 md:py-24">
+          <Reveal className="mx-auto block max-w-3xl px-4 py-16 md:px-6 md:py-24">
             <div className="text-center">
               <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
                 Perguntas frequentes
@@ -250,12 +255,12 @@ export default function ComoFuncionaPage() {
                 </details>
               ))}
             </div>
-          </div>
+          </Reveal>
         </section>
 
         {/* CTA */}
         <section className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
-          <div className="overflow-hidden rounded-2xl bg-primary px-6 py-14 text-center text-primary-foreground md:px-12 md:py-20">
+          <Reveal className="overflow-hidden rounded-2xl bg-primary px-6 py-14 text-center text-primary-foreground md:px-12 md:py-20 block">
             <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-balance md:text-4xl">
               Pronto para começar?
             </h2>
@@ -285,7 +290,7 @@ export default function ComoFuncionaPage() {
                 Buscar imóveis
               </Link>
             </div>
-          </div>
+          </Reveal>
         </section>
       </main>
 

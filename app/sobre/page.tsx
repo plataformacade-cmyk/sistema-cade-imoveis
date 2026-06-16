@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/publico/site-header";
 import { SiteFooter } from "@/components/publico/site-footer";
 import { buttonVariants } from "@/components/ui/button";
+import { Reveal } from "@/components/publico/reveal";
 import { Heart, Handshake, ShieldCheck, Sparkles } from "lucide-react";
 
 export const metadata = {
@@ -52,7 +53,7 @@ export default function SobrePage() {
       <main className="flex-1">
         {/* Hero */}
         <section className="mx-auto max-w-7xl px-4 pt-12 pb-16 md:px-6 md:pt-20">
-          <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+          <Reveal className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
             <div>
               <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
                 Feito em Uberlândia, para Uberlândia
@@ -95,12 +96,12 @@ export default function SobrePage() {
                 className="absolute -bottom-6 -left-6 hidden w-40 rounded-2xl border-4 border-background object-cover shadow-lg lg:block"
               />
             </div>
-          </div>
+          </Reveal>
         </section>
 
         {/* Missão */}
         <section className="border-y bg-muted/30">
-          <div className="mx-auto max-w-4xl px-4 py-16 text-center md:px-6 md:py-24">
+          <Reveal className="mx-auto block max-w-4xl px-4 py-16 text-center md:px-6 md:py-24">
             <p className="text-sm font-semibold tracking-wide text-primary uppercase">
               Nossa missão
             </p>
@@ -113,21 +114,22 @@ export default function SobrePage() {
               pessoas no centro de tudo: do anúncio à entrega das chaves, você
               sempre conversa com gente que se importa.
             </p>
-          </div>
+          </Reveal>
         </section>
 
         {/* Valores */}
         <section className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-              O que nos move
-            </h2>
-            <p className="mt-4 text-lg text-muted-foreground">
-              Valores que guiam cada conversa, cada anúncio e cada visita.
-            </p>
-          </div>
+          <Reveal>
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+                O que nos move
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground">
+                Valores que guiam cada conversa, cada anúncio e cada visita.
+              </p>
+            </div>
 
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {VALORES.map((v) => (
               <div
                 key={v.titulo}
@@ -142,12 +144,13 @@ export default function SobrePage() {
                 </p>
               </div>
             ))}
-          </div>
+            </div>
+          </Reveal>
         </section>
 
         {/* Números */}
         <section className="border-y bg-primary text-primary-foreground">
-          <div className="mx-auto max-w-7xl px-4 py-14 md:px-6">
+          <Reveal className="mx-auto block max-w-7xl px-4 py-14 md:px-6">
             <div className="grid grid-cols-2 gap-8 text-center md:grid-cols-4">
               {NUMEROS.map((n) => (
                 <div key={n.rotulo}>
@@ -160,12 +163,12 @@ export default function SobrePage() {
                 </div>
               ))}
             </div>
-          </div>
+          </Reveal>
         </section>
 
         {/* História */}
         <section className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
-          <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+          <Reveal className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
             <img
               src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=1200&q=80"
               alt="Fundador da Cadê Imóveis"
@@ -204,7 +207,7 @@ export default function SobrePage() {
                 Faça parte da Cadê
               </Link>
             </div>
-          </div>
+          </Reveal>
         </section>
       </main>
 

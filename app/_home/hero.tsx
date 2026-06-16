@@ -1,7 +1,7 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
+import { useEffect, useRef, type CSSProperties } from "react";
 
 const TIPOS = [
   { value: "", label: "Qualquer tipo" },
@@ -11,7 +11,11 @@ const TIPOS = [
   { value: "terreno", label: "Terreno" },
 ] as const;
 
-const FOTO_HERO = "/hero-uberlandia.webp"; // gerado pelo Higgsfield (soul_location)
+// Vídeo de fundo (Higgsfield, image-to-video da foto de Uberlândia).
+// O poster é a foto estática — aparece na hora, sem flash branco, e é o
+// fallback se o vídeo não carregar.
+const VIDEO_HERO = "/hero-uberlandia.mp4";
+const POSTER_HERO = "/hero-uberlandia.webp";
 
 const STATS = [
   { n: "12+", l: "imóveis ativos" },
@@ -19,58 +23,82 @@ const STATS = [
   { n: "100%", l: "negociado na plataforma" },
 ];
 
+const d = (s: string) => ({ "--d": s }) as CSSProperties;
+
 /**
- * Hero cinematográfico (padrão da casa, versão clara): mídia de fundo com
- * Ken Burns (movimento CONTÍNUO), overlay creme, headline com entrada
- * staggered (Motion, degrada com reduced-motion) e faixa de stats.
+ * Hero cinematográfico (padrão da casa, versão clara): VÍDEO de fundo em loop
+ * mudo (com poster = foto, sem flash), overlay creme, headline + busca com
+ * entrada em CSS puro (.entra) — roda no 1º paint e pausa sob a cortina da
+ * intro, retomando em sincronia quando ela sobe.
  */
 export function HomeHero() {
-  const reduce = useReducedMotion();
-  const entra = (delay: number) =>
-    reduce
-      ? {}
-      : {
-          initial: { opacity: 0, y: 22 },
-          animate: { opacity: 1, y: 0 },
-          transition: { duration: 0.6, delay, ease: "easeOut" as const },
-        };
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Garante o play (alguns navegadores barram autoplay até interação) e
+  // segura o vídeo pausado enquanto a cortina da intro está no ar, pra ele
+  // começar do frame 0 quando o site aparece.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const intro = document.documentElement.classList.contains("intro-ativa");
+    const tocar = () => v.play().catch(() => {});
+    if (intro) {
+      v.pause();
+      const poll = setInterval(() => {
+        if (!document.documentElement.classList.contains("intro-ativa")) {
+          clearInterval(poll);
+          tocar();
+        }
+      }, 120);
+      return () => clearInterval(poll);
+    }
+    tocar();
+  }, []);
 
   return (
     <section className="relative isolate overflow-hidden">
-      <div className="absolute inset-0 -z-10 overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={FOTO_HERO}
-          alt="Sala ampla e iluminada de um imóvel"
-          className="size-full object-cover animate-ken-burns"
-        />
+      <div className="midia-chega absolute inset-0 -z-10 overflow-hidden">
+        <video
+          ref={videoRef}
+          poster={POSTER_HERO}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          aria-hidden
+          className="size-full object-cover"
+        >
+          <source src="/hero-uberlandia.webm" type="video/webm" />
+          <source src={VIDEO_HERO} type="video/mp4" />
+        </video>
       </div>
-      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-background/85 via-background/60 to-background" />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-background/85 via-background/55 to-background" />
 
       <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 px-4 py-24 text-center md:px-6 md:py-36">
-        <motion.h1
-          {...entra(0)}
-          className="max-w-3xl text-4xl font-semibold tracking-tight text-balance text-foreground sm:text-5xl md:text-6xl"
+        <h1
+          className="entra max-w-3xl text-4xl font-semibold tracking-tight text-balance text-foreground sm:text-5xl md:text-6xl"
+          style={d("0s")}
         >
           Encontre seu próximo lar em{" "}
           <span className="bg-gradient-to-r from-primary to-amber-500 bg-clip-text italic text-transparent">
             Uberlândia
           </span>
-        </motion.h1>
+        </h1>
 
-        <motion.p
-          {...entra(0.12)}
-          className="max-w-xl text-lg text-balance text-muted-foreground"
+        <p
+          className="entra max-w-xl text-lg text-balance text-muted-foreground"
+          style={d("0.12s")}
         >
           Casas, apartamentos e terrenos selecionados — busque, converse e feche
           negócio direto pela plataforma.
-        </motion.p>
+        </p>
 
-        <motion.form
-          {...entra(0.24)}
+        <form
           method="get"
           action="/plataforma"
-          className="mt-2 flex w-full max-w-3xl flex-col gap-2 rounded-2xl border bg-card/95 p-2 shadow-xl backdrop-blur sm:flex-row sm:items-center sm:rounded-full"
+          className="entra mt-2 flex w-full max-w-3xl flex-col gap-2 rounded-2xl border bg-card/95 p-2 shadow-xl backdrop-blur sm:flex-row sm:items-center sm:rounded-full"
+          style={d("0.24s")}
         >
           <div className="flex flex-1 items-center gap-2 px-3">
             <Search className="size-5 shrink-0 text-muted-foreground" />
@@ -102,11 +130,11 @@ export function HomeHero() {
             <Search className="size-4" />
             Buscar
           </button>
-        </motion.form>
+        </form>
 
-        <motion.div
-          {...entra(0.36)}
-          className="mt-8 flex flex-wrap items-center justify-center gap-x-10 gap-y-4"
+        <div
+          className="entra mt-8 flex flex-wrap items-center justify-center gap-x-10 gap-y-4"
+          style={d("0.36s")}
         >
           {STATS.map((s) => (
             <div key={s.l} className="text-center">
@@ -116,7 +144,7 @@ export function HomeHero() {
               <div className="text-sm text-muted-foreground">{s.l}</div>
             </div>
           ))}
-        </motion.div>
+        </div>
       </div>
     </section>
   );

@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/publico/site-footer";
 import { ImovelCard, type ImovelCardData } from "@/components/publico/imovel-card";
 import { createClient } from "@/lib/supabase/server";
 import { Reveal } from "@/components/publico/reveal";
+import { IntroMarca } from "@/components/publico/intro-marca";
 import { HomeHero } from "./_home/hero";
 import { HomeComoFunciona } from "./_home/como-funciona";
 import { HomeBairros } from "./_home/bairros";
@@ -100,13 +101,14 @@ export default async function Home() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <IntroMarca />
       <SiteHeader />
 
       <main className="flex-1">
         <HomeHero />
 
         {/* Imóveis em destaque */}
-        <section className="mx-auto max-w-7xl px-4 py-20 md:px-6">
+        <Reveal className="mx-auto block max-w-7xl px-4 py-20 md:px-6">
           <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
             <div className="flex flex-col gap-3">
               <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -134,7 +136,7 @@ export default async function Home() {
               <ImovelCard key={imovel.id} imovel={imovel} />
             ))}
           </div>
-        </section>
+        </Reveal>
 
         <Reveal>
           <HomeComoFunciona />

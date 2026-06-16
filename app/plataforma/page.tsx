@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ImovelCard, type ImovelCardData } from "@/components/publico/imovel-card";
+import { Reveal } from "@/components/publico/reveal";
 import { Search, SlidersHorizontal, Home } from "lucide-react";
 
 const TIPO_LABEL: Record<string, string> = {
@@ -98,16 +99,18 @@ export default async function VitrinePage({
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 md:px-6 md:py-12">
       {/* Cabeçalho */}
-      <header className="flex flex-col gap-2">
-        <p className="text-sm font-medium text-primary">Marketplace</p>
-        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-          Imóveis à venda em Uberlândia
-        </h1>
-        <p className="max-w-2xl text-base text-muted-foreground">
-          Encontre seu próximo lar com fotos reais, filtros precisos e contato
-          direto com o anunciante.
-        </p>
-      </header>
+      <Reveal>
+        <header className="flex flex-col gap-2">
+          <p className="text-sm font-medium text-primary">Marketplace</p>
+          <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
+            Imóveis à venda em Uberlândia
+          </h1>
+          <p className="max-w-2xl text-base text-muted-foreground">
+            Encontre seu próximo lar com fotos reais, filtros precisos e contato
+            direto com o anunciante.
+          </p>
+        </header>
+      </Reveal>
 
       {/* Barra de filtros premium (GET, sem JS) */}
       <form
@@ -278,11 +281,11 @@ export default async function VitrinePage({
           )}
         </div>
       ) : (
-        <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <Reveal className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {imoveis.map((i) => (
             <ImovelCard key={i.id} imovel={i} />
           ))}
-        </div>
+        </Reveal>
       )}
     </div>
   );
