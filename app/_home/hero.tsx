@@ -73,21 +73,25 @@ export function HomeHero() {
           <source src={VIDEO_HERO} type="video/mp4" />
         </video>
       </div>
-      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-background/85 via-background/55 to-background" />
+      {/* Escurecimento SUTIL só pra legibilidade (a imagem continua bem
+          visível) — substitui a "lavada" branca que apagava o vídeo. */}
+      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/45 via-black/25 to-black/40" />
+      {/* Conector com a seção de baixo (clara): fade pro fundo só na base. */}
+      <div className="absolute inset-x-0 bottom-0 -z-10 h-28 bg-gradient-to-b from-transparent to-background" />
 
       <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 px-4 py-24 text-center md:px-6 md:py-36">
         <h1
-          className="entra max-w-3xl text-4xl font-semibold tracking-tight text-balance text-foreground sm:text-5xl md:text-6xl"
+          className="entra max-w-3xl text-4xl font-semibold tracking-tight text-balance text-white [text-shadow:0_2px_20px_rgba(0,0,0,0.5)] sm:text-5xl md:text-6xl"
           style={d("0s")}
         >
           Encontre seu próximo lar em{" "}
-          <span className="bg-gradient-to-r from-primary to-amber-500 bg-clip-text italic text-transparent">
+          <span className="bg-gradient-to-r from-primary to-amber-400 bg-clip-text italic text-transparent [text-shadow:none]">
             Uberlândia
           </span>
         </h1>
 
         <p
-          className="entra max-w-xl text-lg text-balance text-muted-foreground"
+          className="entra max-w-xl text-lg text-balance text-white/90 [text-shadow:0_1px_12px_rgba(0,0,0,0.5)]"
           style={d("0.12s")}
         >
           Casas, apartamentos e terrenos selecionados — busque, converse e feche
@@ -137,11 +141,11 @@ export function HomeHero() {
           style={d("0.36s")}
         >
           {STATS.map((s) => (
-            <div key={s.l} className="text-center">
-              <div className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            <div key={s.l} className="text-center [text-shadow:0_1px_12px_rgba(0,0,0,0.5)]">
+              <div className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
                 {s.n}
               </div>
-              <div className="text-sm text-muted-foreground">{s.l}</div>
+              <div className="text-sm text-white/80">{s.l}</div>
             </div>
           ))}
         </div>
