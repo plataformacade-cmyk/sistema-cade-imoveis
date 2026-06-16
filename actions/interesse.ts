@@ -27,78 +27,27 @@ export async function demonstrarInteresse(
 
   const supabase = await createClient();
 
-  // O imóvel precisa existir e estar ativo pra receber interesse.
-  const { data: imovel } = await supabase
-    .from("imoveis")
-    .select("id, proprietario_id, status")
-    .eq("id", imovel_id)
-    .single();
+  // Cria negócio + papéis + conversa via função SECURITY DEFINER (RLS-safe:
+  // um comprador comum não tem permissão de insert direto em negocios/papeis).
+  const { data: negocioId, error } = await supabase.rpc("demonstrar_interesse", {
+    p_imovel_id: imovel_id,
+  });
 
-  if (!imovel || imovel.status !== "ativo")
-    return { error: "Este imóvel não está mais disponível." };
-
-  // Dono não demonstra interesse no próprio imóvel.
-  if (imovel.proprietario_id === sessao.user.id)
-    return { error: "Você é o anunciante deste imóvel." };
-
-  // Evita duplicar: já existe negócio deste usuário (como comprador) pra esse imóvel?
-  const { data: jaTem } = await supabase
-    .from("papeis_negocio")
-    .select("negocio_id, negocios!inner(imovel_id)")
-    .eq("usuario_id", sessao.user.id)
-    .eq("papel", "comprador")
-    .eq("negocios.imovel_id", imovel_id)
-    .limit(1)
-    .maybeSingle();
-
-  if (jaTem) {
-    await registrarEvento("interesse_demonstrado", {
-      entidadeId: imovel_id,
-      payload: { duplicado: true, negocio_id: jaTem.negocio_id },
-    });
-    return { message: "Você já demonstrou interesse neste imóvel." };
+  if (error) {
+    const msg = error.message || "";
+    if (msg.includes("eh_proprietario"))
+      return { error: "Você é o anunciante deste imóvel." };
+    if (msg.includes("imovel_indisponivel") || msg.includes("imovel_inexistente"))
+      return { error: "Este imóvel não está mais disponível." };
+    return { error: "Não foi possível registrar o interesse. Tente de novo." };
   }
 
   await registrarEvento("interesse_demonstrado", {
     entidadeId: imovel_id,
-    payload: { comprador: sessao.user.id },
+    payload: { comprador: sessao.user.id, negocio_id: negocioId },
   });
-
-  // 1) Cria o negócio.
-  const { data: negocio, error: errNegocio } = await supabase
-    .from("negocios")
-    .insert({
-      imovel_id,
-      status: "aberto",
-      criado_por: sessao.user.id,
-    })
-    .select("id")
-    .single();
-
-  if (errNegocio || !negocio)
-    return { error: "Não foi possível registrar o interesse. Tente de novo." };
-
-  // 2) Papéis: comprador (quem demonstrou) + proprietário (dono do imóvel).
-  await supabase.from("papeis_negocio").insert([
-    {
-      negocio_id: negocio.id,
-      usuario_id: sessao.user.id,
-      papel: "comprador",
-      ativo: true,
-    },
-    {
-      negocio_id: negocio.id,
-      usuario_id: imovel.proprietario_id,
-      papel: "proprietario",
-      ativo: true,
-    },
-  ]);
-
-  // 3) Conversa do negócio (chat in-app).
-  await supabase.from("conversas").insert({ negocio_id: negocio.id });
-
   await registrarEvento("negocio_aberto", {
-    entidadeId: negocio.id,
+    entidadeId: String(negocioId),
     payload: { imovel_id, origem: "interesse" },
   });
 

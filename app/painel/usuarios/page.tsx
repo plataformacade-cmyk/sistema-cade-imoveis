@@ -48,6 +48,7 @@ export default async function UsuariosPage({
   let query = supabase
     .from("usuarios")
     .select("id, nome, email, telefone, status")
+    .is("anonimizado_em", null)
     .order("criado_em", { ascending: false });
 
   if (filtroStatus) query = query.eq("status", filtroStatus);
