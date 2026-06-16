@@ -13,6 +13,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { BotaoInteresse } from "./_components/botao-interesse";
+import { AcoesImovel } from "./_components/acoes-imovel";
+import { infoDoBairro } from "./_bairros";
 
 type ImovelDetalhe = {
   id: string;
@@ -116,6 +118,7 @@ export default async function ImovelDetalhePage({
     .filter(Boolean)
     .join(" — ");
   const comodidades = extrairComodidades(imovel.caracteristicas);
+  const bairroInfo = infoDoBairro(imovel.bairro);
 
   const specs = [
     imovel.quartos != null && {
@@ -296,6 +299,29 @@ export default async function ImovelDetalhePage({
               )}
             </div>
           </section>
+
+          {/* Sobre o bairro */}
+          {imovel.bairro && (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-xl font-semibold">
+                Sobre o bairro{" "}
+                <span className="text-primary">{imovel.bairro}</span>
+              </h2>
+              <p className="leading-relaxed text-muted-foreground">
+                {bairroInfo.descricao}
+              </p>
+              <ul className="mt-1 flex flex-wrap gap-2">
+                {bairroInfo.destaques.map((d) => (
+                  <li
+                    key={d}
+                    className="rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary"
+                  >
+                    {d}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
 
         {/* Card lateral STICKY */}
@@ -311,6 +337,8 @@ export default async function ImovelDetalhePage({
             </div>
 
             <BotaoInteresse imovelId={imovel.id} />
+
+            <AcoesImovel imovelId={imovel.id} titulo={titulo} />
 
             <p className="flex items-start gap-2 text-xs text-muted-foreground">
               <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
