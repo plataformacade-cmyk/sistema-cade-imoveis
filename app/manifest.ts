@@ -9,7 +9,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Plataforma imobiliária — anuncie, busque e negocie pela Cadê.",
     start_url: "/",
     display: "standalone",
-    background_color: "#0A0B0E",
+    background_color: "#FFFFFF",
     theme_color: "#EA580C",
     lang: "pt-BR",
     icons: [
