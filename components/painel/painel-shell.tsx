@@ -19,6 +19,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageSquare,
   Settings,
   UserCheck,
   Users,
@@ -36,6 +37,12 @@ const LINKS: Item[] = [
   { href: "/painel/imoveis", label: "Imóveis", icon: Building2, admin: false },
   { href: "/painel/negocios", label: "Negócios", icon: Handshake, admin: false },
   { href: "/painel/visitas", label: "Visitas", icon: CalendarDays, admin: false },
+  {
+    href: "/painel/mensagens",
+    label: "Mensagens",
+    icon: MessageSquare,
+    admin: false,
+  },
   { href: "/painel/usuarios", label: "Usuários", icon: Users, admin: true },
   {
     href: "/painel/corretores",

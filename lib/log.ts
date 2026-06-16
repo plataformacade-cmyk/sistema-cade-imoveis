@@ -18,6 +18,10 @@ export type Evento =
   | "termos_aceitos"
   | "conta_excluida"
   | "corretor_cadastrado"
+  | "interesse_demonstrado"
+  | "mensagem_enviada"
+  | "proposta_enviada"
+  | "proposta_respondida"
   | "erro_nao_capturado";
 
 type Opts = {

@@ -28,6 +28,8 @@ import {
 } from "../_lib";
 import { StatusSelect } from "../_components/status-select";
 import { AtribuirParticipanteForm } from "../_components/atribuir-participante-form";
+import { PropostasSection } from "../_components/propostas-section";
+import { AbrirConversaButton } from "../_components/abrir-conversa-button";
 
 type ImovelEmbed = {
   logradouro: string | null;
@@ -90,7 +92,7 @@ export default async function NegocioDetalhePage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Link
           href="/painel/negocios"
           className={buttonVariants({ variant: "ghost", size: "sm" })}
@@ -98,6 +100,7 @@ export default async function NegocioDetalhePage({
           <ArrowLeft className="size-4" />
           Negócios
         </Link>
+        <AbrirConversaButton negocioId={negocio.id} />
       </div>
 
       <Card>
@@ -187,6 +190,8 @@ export default async function NegocioDetalhePage({
           </div>
         </CardContent>
       </Card>
+
+      <PropostasSection negocioId={negocio.id} />
     </div>
   );
 }
