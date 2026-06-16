@@ -20,48 +20,35 @@ import {
   LogOut,
   Menu,
   MessageSquare,
+  PlusCircle,
   Settings,
   UserCheck,
   Users,
 } from "lucide-react";
+import type { Papel } from "@/lib/auth";
 
 type Item = {
   href: string;
   label: string;
   icon: typeof LayoutDashboard;
-  admin: boolean;
+  /** Papéis que veem o item. undefined = todos. */
+  papeis?: Papel[];
+  admin?: boolean;
 };
 
+const ANUNCIA: Papel[] = ["proprietario", "corretor", "admin"];
+
 const LINKS: Item[] = [
-  { href: "/painel", label: "Dashboard", icon: LayoutDashboard, admin: false },
-  { href: "/painel/imoveis", label: "Imóveis", icon: Building2, admin: false },
-  { href: "/painel/negocios", label: "Negócios", icon: Handshake, admin: false },
-  { href: "/painel/visitas", label: "Visitas", icon: CalendarDays, admin: false },
-  {
-    href: "/painel/mensagens",
-    label: "Mensagens",
-    icon: MessageSquare,
-    admin: false,
-  },
+  { href: "/painel", label: "Dashboard", icon: LayoutDashboard },
+  // "Meus imóveis" só pra quem anuncia (proprietário/corretor/admin).
+  { href: "/painel/imoveis", label: "Meus imóveis", icon: Building2, papeis: ANUNCIA },
+  { href: "/painel/negocios", label: "Negociações", icon: Handshake },
+  { href: "/painel/mensagens", label: "Mensagens", icon: MessageSquare },
+  { href: "/painel/visitas", label: "Visitas", icon: CalendarDays },
   { href: "/painel/usuarios", label: "Usuários", icon: Users, admin: true },
-  {
-    href: "/painel/corretores",
-    label: "Corretores",
-    icon: UserCheck,
-    admin: true,
-  },
-  {
-    href: "/painel/observabilidade",
-    label: "Observabilidade",
-    icon: Activity,
-    admin: true,
-  },
-  {
-    href: "/painel/configuracoes",
-    label: "Configurações",
-    icon: Settings,
-    admin: false,
-  },
+  { href: "/painel/corretores", label: "Corretores", icon: UserCheck, admin: true },
+  { href: "/painel/observabilidade", label: "Observabilidade", icon: Activity, admin: true },
+  { href: "/painel/configuracoes", label: "Configurações", icon: Settings },
 ];
 
 function Marca() {
@@ -77,14 +64,18 @@ function Marca() {
 }
 
 function Nav({
-  isAdmin,
+  papel,
   onNavigate,
 }: {
-  isAdmin: boolean;
+  papel: Papel;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const visiveis = LINKS.filter((l) => !l.admin || isAdmin);
+  const visiveis = LINKS.filter((l) => {
+    if (l.admin) return papel === "admin";
+    if (l.papeis) return l.papeis.includes(papel);
+    return true;
+  });
   const temAdmin = visiveis.some((l) => l.admin);
 
   return (
@@ -123,16 +114,31 @@ function Nav({
   );
 }
 
-function BlocoUsuario({ email }: { email: string }) {
+const PAPEL_LABEL: Record<Papel, string> = {
+  cliente: "Cliente",
+  proprietario: "Proprietário",
+  corretor: "Corretor",
+  admin: "Administrador",
+};
+
+function BlocoUsuario({
+  nome,
+  email,
+  papel,
+}: {
+  nome: string;
+  email: string;
+  papel: Papel;
+}) {
   return (
     <div className="border-t p-3">
       <div className="flex items-center gap-2.5 rounded-lg px-2 py-2">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary uppercase">
-          {email.charAt(0)}
+          {(nome || email).charAt(0)}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{email}</p>
-          <p className="text-xs text-muted-foreground">Minha conta</p>
+          <p className="truncate text-sm font-medium">{nome || email}</p>
+          <p className="text-xs text-muted-foreground">{PAPEL_LABEL[papel]}</p>
         </div>
         <form action={signout}>
           <Button
@@ -151,12 +157,14 @@ function BlocoUsuario({ email }: { email: string }) {
 }
 
 export function PainelShell({
+  nome,
   email,
-  isAdmin,
+  papel,
   children,
 }: {
+  nome: string;
   email: string;
-  isAdmin: boolean;
+  papel: Papel;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -168,9 +176,20 @@ export function PainelShell({
           <Marca />
         </div>
         <div className="flex-1 overflow-y-auto">
-          <Nav isAdmin={isAdmin} />
+          <Nav papel={papel} />
+          {papel === "cliente" && (
+            <div className="px-3 pb-3">
+              <Link
+                href="/painel/imoveis/novo"
+                className="flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+              >
+                <PlusCircle className="size-4" />
+                Anunciar imóvel
+              </Link>
+            </div>
+          )}
         </div>
-        <BlocoUsuario email={email} />
+        <BlocoUsuario nome={nome} email={email} papel={papel} />
       </aside>
 
       <div className="flex flex-1 flex-col">
@@ -188,7 +207,7 @@ export function PainelShell({
                 <SheetTitle className="flex h-16 items-center border-b px-5 text-left">
                   <Marca />
                 </SheetTitle>
-                <Nav isAdmin={isAdmin} onNavigate={() => setOpen(false)} />
+                <Nav papel={papel} onNavigate={() => setOpen(false)} />
               </SheetContent>
             </Sheet>
             <Marca />
@@ -202,7 +221,7 @@ export function PainelShell({
               Ver site
             </Link>
             <span className="text-sm text-muted-foreground hidden sm:inline">
-              {email}
+              {nome || email}
             </span>
           </div>
         </header>

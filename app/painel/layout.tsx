@@ -11,7 +11,11 @@ export default async function PainelLayout({
   if (!sessao) redirect("/login");
 
   return (
-    <PainelShell email={sessao.user.email} isAdmin={sessao.isAdmin}>
+    <PainelShell
+      nome={sessao.user.nome}
+      email={sessao.user.email}
+      papel={sessao.papel}
+    >
       {children}
     </PainelShell>
   );

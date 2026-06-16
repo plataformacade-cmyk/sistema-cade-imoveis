@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessao } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +43,8 @@ export default async function UsuariosPage({
     sp.status && STATUS_VALIDOS.includes(sp.status) ? sp.status : "";
 
   const sessao = await getSessao();
-  const isAdmin = sessao?.isAdmin ?? false;
+  if (!sessao?.isAdmin) redirect("/painel");
+  const isAdmin = true;
 
   const supabase = await createClient();
   let query = supabase

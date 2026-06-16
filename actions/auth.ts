@@ -6,6 +6,26 @@ import { redirect } from "next/navigation";
 
 export type AuthState = { error?: string; message?: string };
 
+/** Traduz as mensagens de erro do Supabase (vêm em inglês) para PT-BR. */
+function traduzErro(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes("weak") || m.includes("known to be"))
+    return "Essa senha é muito comum e fácil de adivinhar. Escolha uma mais forte.";
+  if (m.includes("already registered") || m.includes("already been registered"))
+    return "Este e-mail já tem uma conta. Tente entrar.";
+  if (m.includes("invalid login credentials"))
+    return "E-mail ou senha inválidos.";
+  if (m.includes("email not confirmed"))
+    return "Confirme seu e-mail antes de entrar.";
+  if (m.includes("invalid format") || m.includes("unable to validate email"))
+    return "E-mail inválido.";
+  if (m.includes("at least") && m.includes("characters"))
+    return "A senha é curta demais.";
+  if (m.includes("for security purposes") || m.includes("rate limit"))
+    return "Aguarde alguns segundos e tente novamente.";
+  return "Não foi possível concluir agora. Tente novamente.";
+}
+
 export async function login(
   _prev: AuthState,
   formData: FormData,
@@ -15,7 +35,7 @@ export async function login(
   const password = String(formData.get("password") ?? "");
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: "E-mail ou senha inválidos." };
+  if (error) return { error: traduzErro(error.message) };
 
   revalidatePath("/", "layout");
   redirect("/painel");
@@ -33,15 +53,24 @@ export async function signup(
   if (password.length < 8)
     return { error: "A senha precisa ter ao menos 8 caracteres." };
 
-  const { error } = await supabase.auth.signUp({
+  // Todo cadastro público nasce como CLIENTE (papel global).
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { nome } },
+    options: { data: { nome, papel: "cliente" } },
   });
-  if (error) return { error: error.message };
+  if (error) return { error: traduzErro(error.message) };
 
+  // Confirmação de e-mail está DESLIGADA no Supabase → o signUp já devolve
+  // sessão. Loga direto e manda pro painel (sem tela de "confirme o e-mail").
+  if (data.session) {
+    revalidatePath("/", "layout");
+    redirect("/painel");
+  }
+
+  // Fallback (se algum dia ligarem a confirmação por e-mail).
   return {
-    message: "Conta criada! Confirme pelo link enviado ao seu e-mail.",
+    message: "Conta criada! Verifique seu e-mail para confirmar o acesso.",
   };
 }
 
@@ -53,7 +82,7 @@ export async function resetPassword(
   const email = String(formData.get("email") ?? "");
 
   const { error } = await supabase.auth.resetPasswordForEmail(email);
-  if (error) return { error: error.message };
+  if (error) return { error: traduzErro(error.message) };
 
   return { message: "Se o e-mail existir, enviamos um link de recuperação." };
 }

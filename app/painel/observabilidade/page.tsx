@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getSessao } from "@/lib/auth";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -45,6 +47,8 @@ export default async function ObservabilidadePage({
   searchParams: Promise<{ evento?: string }>;
 }) {
   const { evento } = await searchParams;
+  const sessao = await getSessao();
+  if (!sessao?.isAdmin) redirect("/painel");
   const supabase = await createClient();
 
   let query = supabase
