@@ -134,8 +134,60 @@ async function main() {
     }
   }
 
+  // ── Suporte vivo: conversas com o assistente + uma escalada p/ humano ──
+  await seedSuporte(id);
+
   console.log("\nPRONTO. Logins demo (senha " + SENHA + "):");
   USUARIOS.forEach((u) => console.log(`  ${u.papel.padEnd(12)} ${u.email}`));
+}
+
+// Cria conversas de suporte demonstrando o agente em ação (idempotente).
+async function seedSuporte(id) {
+  // A migration de suporte precisa estar aplicada.
+  const { error: e0 } = await sb.from("suporte_conversas").select("id").limit(1);
+  if (e0) { console.log("suporte: tabelas ainda não existem (rode a migration) — pulando."); return; }
+
+  async function conversa({ usuario, papel, assunto, status, atendente, mensagens }) {
+    const { data: ja } = await sb
+      .from("suporte_conversas").select("id").eq("usuario_id", usuario).eq("assunto", assunto).limit(1);
+    if (ja?.[0]?.id) return ja[0].id;
+    const { data: conv, error } = await sb.from("suporte_conversas")
+      .insert({ usuario_id: usuario, papel, assunto, status, atendente_id: atendente ?? null })
+      .select("id").single();
+    if (error) throw new Error("suporte_conversa: " + error.message);
+    for (const m of mensagens) {
+      await sb.from("suporte_mensagens").insert({
+        conversa_id: conv.id, autor: m.autor, autor_id: m.autor_id ?? null, corpo: m.corpo,
+      });
+    }
+    return conv.id;
+  }
+
+  // 1) Cliente tirou dúvida e o assistente resolveu na hora.
+  await conversa({
+    usuario: id.cliente, papel: "cliente",
+    assunto: "Como agendo uma visita?", status: "resolvida",
+    mensagens: [
+      { autor: "usuario", autor_id: id.cliente, corpo: "Oi! Como faço pra agendar uma visita num imóvel?" },
+      { autor: "assistente", corpo: "Depois de demonstrar interesse, dentro da negociação você pede uma visita escolhendo data e horário. O anunciante confirma e você acompanha o status na aba Visitas do seu painel." },
+      { autor: "usuario", autor_id: id.cliente, corpo: "Perfeito, obrigada!" },
+      { autor: "assistente", corpo: "Disponha! Qualquer dúvida é só chamar por aqui. 😊" },
+    ],
+  });
+
+  // 2) Proprietário com caso específico → escalou para um atendente humano.
+  await conversa({
+    usuario: id.proprietario, papel: "proprietario",
+    assunto: "Minha foto não está subindo", status: "aguardando_humano",
+    atendente: id.admin,
+    mensagens: [
+      { autor: "usuario", autor_id: id.proprietario, corpo: "Estou tentando adicionar fotos no meu anúncio e dá erro. Pode ajudar?" },
+      { autor: "assistente", corpo: "Isso parece um caso específico da sua conta. Vou chamar um atendente humano da Cadê para te ajudar com isso." },
+      { autor: "humano", autor_id: id.admin, corpo: "Oi, Paulo! Aqui é a equipe da Cadê. Qual o tamanho do arquivo e o formato da foto? Aceitamos JPG/PNG/WebP até 10 MB." },
+    ],
+  });
+
+  console.log("suporte: 2 conversas criadas (1 resolvida + 1 com atendente).");
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

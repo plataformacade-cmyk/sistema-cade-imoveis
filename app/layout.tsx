@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { ChatSuporte } from "@/components/suporte/chat-suporte";
 import { SITE, organizationLd, websiteLd } from "@/lib/seo";
 import "./globals.css";
 
@@ -55,6 +56,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteLd()) }}
         />
         {children}
+        <ChatSuporte />
         <Toaster richColors position="top-right" />
       </body>
     </html>
