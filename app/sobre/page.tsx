@@ -84,14 +84,14 @@ export default function SobrePage() {
 
             <div className="relative">
               <img
-                src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=1200&q=80"
-                alt="Equipe da Cadê Imóveis sorrindo em uma reunião"
+                src="/uberlandia-aerea.webp"
+                alt="Vista de Uberlândia ao entardecer"
                 loading="lazy"
                 className="aspect-[4/5] w-full rounded-2xl object-cover shadow-xl shadow-foreground/5 sm:aspect-[4/3] lg:aspect-[4/5]"
               />
               <img
-                src="https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&w=1200&q=80"
-                alt="Atendimento próximo e humano"
+                src="/institucional/acolhedor.webp"
+                alt="Ambiente acolhedor de um imóvel anunciado na Cadê"
                 loading="lazy"
                 className="absolute -bottom-6 -left-6 hidden w-40 rounded-2xl border-4 border-background object-cover shadow-lg lg:block"
               />
@@ -170,8 +170,8 @@ export default function SobrePage() {
         <section className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
           <Reveal className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
             <img
-              src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=1200&q=80"
-              alt="Fundador da Cadê Imóveis"
+              src="/institucional/alto-padrao.webp"
+              alt="Imóvel de alto padrão em Uberlândia"
               loading="lazy"
               className="aspect-[4/3] w-full rounded-2xl object-cover shadow-xl shadow-foreground/5"
             />

@@ -31,11 +31,13 @@ export const metadata: Metadata = {
  * Fotos Unsplash de demonstração — usadas só quando ainda não há imóveis
  * ativos no banco, pra home nunca aparecer vazia no lançamento.
  */
+const BUCKET_DEMO =
+  "https://qrhiftyvfsftyvjubmkl.supabase.co/storage/v1/object/public/imovel-fotos/demo";
 const FOTOS_DEMO = [
-  "https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=80",
+  `${BUCKET_DEMO}/casa-moderna.webp`,
+  `${BUCKET_DEMO}/predio-alto.webp`,
+  `${BUCKET_DEMO}/sala-luxo.webp`,
+  `${BUCKET_DEMO}/casa-piscina.webp`,
 ];
 
 const DESTAQUES_DEMO: ImovelCardData[] = [

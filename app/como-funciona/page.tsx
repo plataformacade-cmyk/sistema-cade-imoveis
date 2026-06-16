@@ -27,8 +27,8 @@ const PASSOS_ANUNCIA = [
     titulo: "Cadastre seu imóvel",
     texto:
       "Preencha as informações, suba boas fotos e defina o valor. Leva poucos minutos.",
-    foto: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=1200&q=80",
-    fotoAlt: "Imóvel pronto para ser anunciado",
+    foto: "/institucional/anunciar.webp",
+    fotoAlt: "Casa moderna pronta para ser anunciada na Cadê",
   },
   {
     icone: Megaphone,
@@ -62,8 +62,8 @@ const PASSOS_BUSCA = [
     titulo: "Busque do seu jeito",
     texto:
       "Filtre por bairro, preço, tipo e tamanho até encontrar o imóvel que combina com você.",
-    foto: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80",
-    fotoAlt: "Pessoa buscando o imóvel ideal",
+    foto: "/institucional/buscar.webp",
+    fotoAlt: "Sala de estar de um imóvel à espera de novos moradores",
   },
   {
     icone: Heart,

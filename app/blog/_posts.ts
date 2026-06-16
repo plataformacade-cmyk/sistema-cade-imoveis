@@ -63,7 +63,7 @@ const POSTS_BASE: Omit<Post, "tempoLeitura">[] = [
     titulo: "Como financiar seu primeiro imóvel em Uberlândia",
     resumo:
       "Do FGTS ao Minha Casa Minha Vida: um guia completo para quem quer sair do aluguel e comprar o primeiro imóvel na cidade sem se perder no caminho.",
-    capa: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1600&q=80",
+    capa: "/blog/financiamento.webp",
     capaAlt: "Casal comemorando a compra do primeiro imóvel",
     categoria: "Financiamento",
     tags: ["FGTS", "Minha Casa Minha Vida", "primeiro imóvel", "crédito", "entrada"],
@@ -91,7 +91,7 @@ const POSTS_BASE: Omit<Post, "tempoLeitura">[] = [
     titulo: "Documentação para comprar imóvel: o checklist completo",
     resumo:
       "Evite surpresas na hora de fechar negócio. Veja, item por item, quais documentos do imóvel e do vendedor você precisa conferir antes de assinar.",
-    capa: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=1600&q=80",
+    capa: "/blog/documentacao.webp",
     capaAlt: "Documentos e contrato sobre uma mesa de madeira",
     categoria: "Comprar",
     tags: ["documentação", "matrícula", "cartório", "escritura", "segurança"],
@@ -116,7 +116,7 @@ const POSTS_BASE: Omit<Post, "tempoLeitura">[] = [
     titulo: "Os melhores bairros para morar em Uberlândia",
     resumo:
       "Do agito do Centro à tranquilidade do Jardim Karaíba: um panorama dos bairros para você encontrar o que combina com o seu estilo de vida e o seu bolso.",
-    capa: "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?auto=format&fit=crop&w=1600&q=80",
+    capa: "/blog/bairros.webp",
     capaAlt: "Vista aérea de um bairro residencial arborizado",
     categoria: "Bairros de Uberlândia",
     tags: ["bairros", "Granja Marileusa", "Santa Mônica", "Jardim Karaíba", "Centro"],
@@ -142,7 +142,7 @@ const POSTS_BASE: Omit<Post, "tempoLeitura">[] = [
     titulo: "Alugar ou comprar? Como tomar a decisão certa",
     resumo:
       "Não existe resposta única. Veja os pontos que realmente importam — dinheiro, tempo e estilo de vida — para decidir entre alugar e comprar no seu momento.",
-    capa: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=1600&q=80",
+    capa: "/blog/planejamento.webp",
     capaAlt: "Pessoa analisando finanças e planejando em um caderno",
     categoria: "Dicas",
     tags: ["alugar", "comprar", "finanças", "decisão", "planejamento"],
@@ -168,7 +168,7 @@ const POSTS_BASE: Omit<Post, "tempoLeitura">[] = [
     titulo: "5 dicas para anunciar seu imóvel e vender mais rápido",
     resumo:
       "Boas fotos, descrição honesta e preço justo. Veja como fazer seu anúncio se destacar na multidão e atrair exatamente as pessoas certas.",
-    capa: "https://images.unsplash.com/photo-1556909212-d5b604d0c90d?auto=format&fit=crop&w=1600&q=80",
+    capa: "/blog/anunciar.webp",
     capaAlt: "Sala de estar bem iluminada, organizada e convidativa",
     categoria: "Dicas",
     tags: ["anunciar", "vender", "fotos", "preço", "negociação"],
@@ -194,7 +194,7 @@ const POSTS_BASE: Omit<Post, "tempoLeitura">[] = [
     titulo: "Tendências do mercado imobiliário de Uberlândia em 2026",
     resumo:
       "Valorização, novos polos e o que esperar dos preços. Um olhar sobre para onde o mercado da cidade está caminhando — e como se posicionar.",
-    capa: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1600&q=80",
+    capa: "/blog/skyline.webp",
     capaAlt: "Skyline de prédios modernos ao entardecer",
     categoria: "Comprar",
     tags: ["mercado", "tendências", "2026", "investimento", "valorização"],
@@ -218,7 +218,7 @@ const POSTS_BASE: Omit<Post, "tempoLeitura">[] = [
     titulo: "Guia completo para alugar sem dor de cabeça",
     resumo:
       "Da garantia à vistoria: o passo a passo para alugar um imóvel com segurança, entender o contrato e evitar as armadilhas mais comuns.",
-    capa: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1600&q=80",
+    capa: "/blog/alugar.webp",
     capaAlt: "Chaves sobre a mesa em frente a uma sala recém-alugada",
     categoria: "Alugar",
     tags: ["aluguel", "contrato", "fiador", "vistoria", "garantia"],
@@ -244,7 +244,7 @@ const POSTS_BASE: Omit<Post, "tempoLeitura">[] = [
     titulo: "Como avaliar um bairro antes de comprar",
     resumo:
       "Imóvel bom em bairro errado vira arrependimento. Veja o que observar — de mobilidade a segurança — para acertar na escolha da região.",
-    capa: "https://images.unsplash.com/photo-1449844908441-8829872d2607?auto=format&fit=crop&w=1600&q=80",
+    capa: "/blog/rua-bairro.webp",
     capaAlt: "Rua arborizada de um bairro residencial tranquilo",
     categoria: "Bairros de Uberlândia",
     tags: ["bairro", "localização", "mobilidade", "segurança", "investimento"],

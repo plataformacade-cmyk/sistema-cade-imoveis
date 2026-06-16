@@ -264,6 +264,18 @@ html.intro-ativa .midia-chega {
   animation-play-state: paused;
 }
 
+/* Flutuação contínua e sutil dos ícones próprios (gerados no Higgsfield).
+   FORA do @media reduced-motion de propósito: é movimento contínuo de baixo
+   risco e o dono (reduced-motion ligado) precisa ver os ícones "vivos". */
+@keyframes icone-flutua {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+.icone-flutua {
+  animation: icone-flutua 3.6s ease-in-out infinite;
+  will-change: transform;
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* Só o movimento CONTÍNUO desliga (Ken Burns/float). As entradas curtas
      e a intro de marca FICAM: muito Windows roda com "efeitos" desligados

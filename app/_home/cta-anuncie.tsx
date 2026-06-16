@@ -2,8 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 
-const FOTO_CTA =
-  "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80";
+const FOTO_CTA = "/institucional/anunciar.webp";
 
 /** CTA final pra proprietários: "Tem um imóvel? Anuncie grátis". */
 export function HomeCtaAnuncie() {
