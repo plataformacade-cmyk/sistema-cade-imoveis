@@ -11,6 +11,7 @@ import { IntroMarca } from "@/components/publico/intro-marca";
 import { HomeHero } from "./_home/hero";
 import { HomeComoFunciona } from "./_home/como-funciona";
 import { HomeBairros } from "./_home/bairros";
+import { HomeAppEmBreve } from "./_home/app-em-breve";
 import { HomeCtaAnuncie } from "./_home/cta-anuncie";
 
 export const metadata: Metadata = {
@@ -145,6 +146,9 @@ export default async function Home() {
         </Reveal>
         <Reveal>
           <HomeBairros />
+        </Reveal>
+        <Reveal>
+          <HomeAppEmBreve />
         </Reveal>
         <Reveal>
           <HomeCtaAnuncie />
