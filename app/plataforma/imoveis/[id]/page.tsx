@@ -324,14 +324,20 @@ export default async function ImovelDetalhePage({
           {/* Mapa (placeholder) */}
           <section className="flex flex-col gap-3">
             <h2 className="text-xl font-semibold">Localização</h2>
-            <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-2xl border bg-muted/40 px-6 text-center">
-              <MapPin className="size-8 text-primary" />
-              <p className="font-medium">{ruaNumero || local}</p>
-              {enderecoCompleto && (
-                <p className="max-w-md text-sm text-muted-foreground">
-                  {enderecoCompleto}
-                </p>
-              )}
+            <div className="overflow-hidden rounded-2xl border">
+              <div className="flex items-center gap-2 bg-muted/40 px-4 py-3">
+                <MapPin className="size-4 shrink-0 text-primary" />
+                <p className="text-sm font-medium">{enderecoCompleto || local}</p>
+              </div>
+              <iframe
+                title={`Mapa de ${ruaNumero || local}`}
+                src={`https://www.google.com/maps?q=${encodeURIComponent(
+                  [ruaNumero, imovel.bairro, cidadeUf].filter(Boolean).join(", "),
+                )}&z=15&output=embed`}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="h-72 w-full border-0"
+              />
             </div>
           </section>
 
