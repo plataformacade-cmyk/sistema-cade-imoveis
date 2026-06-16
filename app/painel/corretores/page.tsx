@@ -59,6 +59,7 @@ export default async function CorretoresPage() {
       supabase
         .from("usuarios")
         .select("id, nome, email")
+        .is("anonimizado_em", null)
         .order("nome", { ascending: true }),
       supabase
         .from("imobiliarias")

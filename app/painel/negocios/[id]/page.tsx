@@ -74,6 +74,7 @@ export default async function NegocioDetalhePage({
     supabase
       .from("usuarios")
       .select("id, nome, email")
+      .is("anonimizado_em", null)
       .order("nome", { ascending: true }),
   ]);
 

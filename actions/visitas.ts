@@ -47,6 +47,8 @@ export async function agendarVisita(
   if (!imovel_id) return { error: "Selecione um imóvel." };
   if (!CANAIS_VALIDOS.includes(canal)) return { error: "Canal inválido." };
   if (!data_hora) return { error: "Informe a data e hora da visita." };
+  if (new Date(data_hora) <= new Date())
+    return { error: "A visita precisa ser numa data futura." };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -124,6 +126,8 @@ export async function reagendarVisita(
 
   if (!visita_id) return { error: "Visita não identificada." };
   if (!data_hora) return { error: "Informe a nova data e hora." };
+  if (new Date(data_hora) <= new Date())
+    return { error: "A nova data precisa ser no futuro." };
 
   const supabase = await createClient();
   const { error } = await supabase

@@ -10,6 +10,7 @@ import {
   type ImovelState,
 } from "@/actions/imoveis";
 import { createClient } from "@/lib/supabase/client";
+import imageCompression from "browser-image-compression";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -141,12 +142,20 @@ export function ImovelForm({
     const novas: string[] = [];
     try {
       for (const file of lista) {
-        // TODO: comprimir a imagem no client antes do upload.
-        const ext = file.name.split(".").pop() ?? "jpg";
+        // Compressão client-side: máx 1MB / 1920px, qualidade 0.85.
+        const arquivo = file.type.startsWith("image/")
+          ? await imageCompression(file, {
+              maxSizeMB: 1,
+              maxWidthOrHeight: 1920,
+              useWebWorker: true,
+              initialQuality: 0.85,
+            }).catch(() => file)
+          : file;
+        const ext = (arquivo.name.split(".").pop() ?? "jpg").toLowerCase();
         const caminho = `${usuarioId}/${crypto.randomUUID()}.${ext}`;
         const { error } = await supabase.storage
           .from("imovel-fotos")
-          .upload(caminho, file, { upsert: false });
+          .upload(caminho, arquivo, { upsert: false });
         if (error) {
           toast.error(`Falha ao enviar ${file.name}.`);
           continue;
