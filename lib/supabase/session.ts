@@ -34,7 +34,10 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isProtected = path.startsWith("/painel");
-  const isAuthPage = AUTH_PAGES.some((p) => path.startsWith(p));
+  // /cadastro/completar é o ONBOARDING (usuário JÁ logado) — não é página de
+  // auth, então não pode ser redirecionada pro painel.
+  const isOnboarding = path.startsWith("/cadastro/completar");
+  const isAuthPage = !isOnboarding && AUTH_PAGES.some((p) => path.startsWith(p));
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
