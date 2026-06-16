@@ -14,10 +14,12 @@ import { getSessao } from "@/lib/auth";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { GraficoBarras } from "./_components/grafico-barras";
 
 async function conta(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -40,6 +42,7 @@ export default async function PainelPage() {
 
   let metricas: Metrica[] = [];
   let acoes: { label: string; href: string; icon: typeof Search; primaria?: boolean }[] = [];
+  let grafico: { label: string; valor: number }[] | null = null;
 
   if (papel === "cliente") {
     const [negocios, visitas, mensagens] = await Promise.all([
@@ -85,6 +88,20 @@ export default async function PainelPage() {
     acoes = [
       { label: "Observabilidade", href: "/painel/observabilidade", icon: Search, primaria: true },
     ];
+    // Gráfico: imóveis por bairro (top 6).
+    const { data: linhas } = await supabase
+      .from("imoveis")
+      .select("bairro")
+      .eq("status", "ativo");
+    const porBairro = new Map<string, number>();
+    for (const l of linhas ?? []) {
+      const b = (l.bairro as string) || "Outros";
+      porBairro.set(b, (porBairro.get(b) ?? 0) + 1);
+    }
+    grafico = [...porBairro.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([label, valor]) => ({ label, valor }));
   }
 
   return (
@@ -122,6 +139,18 @@ export default async function PainelPage() {
           );
         })}
       </div>
+
+      {grafico && grafico.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Imóveis por bairro</CardTitle>
+            <CardDescription>Anúncios ativos nos bairros com mais oferta.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <GraficoBarras dados={grafico} />
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex flex-wrap gap-3">
         {acoes.map((a) => {
