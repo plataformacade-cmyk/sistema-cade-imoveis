@@ -43,6 +43,7 @@ export default async function PainelPage() {
   let metricas: Metrica[] = [];
   let acoes: { label: string; href: string; icon: typeof Search; primaria?: boolean }[] = [];
   let grafico: { label: string; valor: number }[] | null = null;
+  let graficoTipo: { label: string; valor: number }[] | null = null;
 
   if (papel === "cliente") {
     const [negocios, visitas, mensagens] = await Promise.all([
@@ -88,20 +89,30 @@ export default async function PainelPage() {
     acoes = [
       { label: "Observabilidade", href: "/painel/observabilidade", icon: Search, primaria: true },
     ];
-    // Gráfico: imóveis por bairro (top 6).
+    // Gráficos com dados REAIS: imóveis por bairro (top 6) e por tipo.
     const { data: linhas } = await supabase
       .from("imoveis")
-      .select("bairro")
+      .select("bairro, tipo")
       .eq("status", "ativo");
     const porBairro = new Map<string, number>();
+    const porTipo = new Map<string, number>();
+    const TIPO_LABEL: Record<string, string> = {
+      casa: "Casa",
+      apartamento: "Apto",
+      comercial: "Comercial",
+      terreno: "Terreno",
+    };
     for (const l of linhas ?? []) {
       const b = (l.bairro as string) || "Outros";
       porBairro.set(b, (porBairro.get(b) ?? 0) + 1);
+      const t = TIPO_LABEL[(l.tipo as string) ?? ""] ?? "Outros";
+      porTipo.set(t, (porTipo.get(t) ?? 0) + 1);
     }
     grafico = [...porBairro.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6)
       .map(([label, valor]) => ({ label, valor }));
+    graficoTipo = [...porTipo.entries()].map(([label, valor]) => ({ label, valor }));
   }
 
   return (
@@ -124,7 +135,7 @@ export default async function PainelPage() {
           const Icon = m.icon;
           return (
             <Link key={m.label} href={m.href}>
-              <Card className="transition-all hover:-translate-y-0.5 hover:shadow-md">
+              <Card className="bg-gradient-to-t from-primary/5 to-card transition-all hover:-translate-y-0.5 hover:shadow-md">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardDescription>{m.label}</CardDescription>
@@ -141,15 +152,28 @@ export default async function PainelPage() {
       </div>
 
       {grafico && grafico.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Imóveis por bairro</CardTitle>
-            <CardDescription>Anúncios ativos nos bairros com mais oferta.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <GraficoBarras dados={grafico} />
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card className="bg-gradient-to-t from-primary/5 to-card">
+            <CardHeader>
+              <CardTitle className="text-base">Imóveis por bairro</CardTitle>
+              <CardDescription>Bairros com mais anúncios ativos.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <GraficoBarras dados={grafico} />
+            </CardContent>
+          </Card>
+          {graficoTipo && graficoTipo.length > 0 && (
+            <Card className="bg-gradient-to-t from-primary/5 to-card">
+              <CardHeader>
+                <CardTitle className="text-base">Imóveis por tipo</CardTitle>
+                <CardDescription>Distribuição do catálogo ativo.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <GraficoBarras dados={graficoTipo} />
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
 
       <div className="flex flex-wrap gap-3">
