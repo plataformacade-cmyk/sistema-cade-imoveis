@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { BotaoInteresse } from "./_components/botao-interesse";
 import { AcoesImovel } from "./_components/acoes-imovel";
+import { ImovelCard, type ImovelCardData } from "@/components/publico/imovel-card";
 import { infoDoBairro } from "./_bairros";
 import { SITE, imovelLd, breadcrumbLd, slugBairro } from "@/lib/seo";
 
@@ -120,6 +121,29 @@ export default async function ImovelDetalhePage({
     .join(" — ");
   const comodidades = extrairComodidades(imovel.caracteristicas);
   const bairroInfo = infoDoBairro(imovel.bairro);
+
+  // Imóveis relacionados: mesmo bairro primeiro; completa com o mesmo tipo.
+  const colunasCard =
+    "id, tipo, bairro, cidade, quartos, vagas, area_m2, valor_anuncio, fotos";
+  const relacionados: ImovelCardData[] = [];
+  const vistos = new Set<string>([imovel.id]);
+  async function buscarRel(coluna: "bairro" | "tipo", valor: string | null) {
+    if (!valor || relacionados.length >= 4) return;
+    const { data: lista } = await supabase
+      .from("imoveis")
+      .select(colunasCard)
+      .eq("status", "ativo")
+      .eq(coluna, valor)
+      .neq("id", imovel.id)
+      .limit(8);
+    for (const r of (lista as ImovelCardData[]) ?? []) {
+      if (relacionados.length >= 4 || vistos.has(r.id)) continue;
+      vistos.add(r.id);
+      relacionados.push(r);
+    }
+  }
+  await buscarRel("bairro", imovel.bairro);
+  await buscarRel("tipo", imovel.tipo);
 
   const urlImovel = `${SITE.url}/plataforma/imoveis/${imovel.id}`;
   const jsonld = [
@@ -389,6 +413,32 @@ export default async function ImovelDetalhePage({
           </div>
         </aside>
       </div>
+
+      {/* IMÓVEIS RELACIONADOS */}
+      {relacionados.length > 0 && (
+        <section className="mt-14 border-t pt-10">
+          <div className="mb-5 flex items-end justify-between gap-4">
+            <h2 className="text-2xl font-semibold tracking-tight">
+              Imóveis relacionados
+            </h2>
+            <Link
+              href={
+                imovel.bairro
+                  ? `/imoveis-em/${slugBairro(imovel.bairro)}`
+                  : "/plataforma"
+              }
+              className="shrink-0 text-sm font-medium text-primary hover:underline"
+            >
+              Ver mais {imovel.bairro ? `em ${imovel.bairro}` : "imóveis"} →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {relacionados.map((r) => (
+              <ImovelCard key={r.id} imovel={r} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
