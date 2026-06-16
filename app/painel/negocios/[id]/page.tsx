@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileText, FileSignature } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -100,7 +100,23 @@ export default async function NegocioDetalhePage({
           <ArrowLeft className="size-4" />
           Negócios
         </Link>
-        <AbrirConversaButton negocioId={negocio.id} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/painel/negocios/${negocio.id}/documentos`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <FileText className="size-4" />
+            Documentos
+          </Link>
+          <Link
+            href={`/painel/negocios/${negocio.id}/contrato`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <FileSignature className="size-4" />
+            Contrato
+          </Link>
+          <AbrirConversaButton negocioId={negocio.id} />
+        </div>
       </div>
 
       <Card>

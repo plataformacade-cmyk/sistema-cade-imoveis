@@ -22,6 +22,11 @@ export type Evento =
   | "mensagem_enviada"
   | "proposta_enviada"
   | "proposta_respondida"
+  | "documento_enviado"
+  | "documento_status_mudado"
+  | "contrato_gerado"
+  | "contrato_assinado"
+  | "comissao_registrada"
   | "erro_nao_capturado";
 
 type Opts = {
