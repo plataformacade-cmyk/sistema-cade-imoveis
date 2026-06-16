@@ -42,9 +42,9 @@ export function HomeComoFunciona() {
           {PASSOS.map((p, i) => (
             <li
               key={p.titulo}
-              className="flex flex-col gap-3 rounded-2xl border bg-card p-6 shadow-sm transition-shadow hover:shadow-lg"
+              className="group flex flex-col gap-3 rounded-2xl border bg-card p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg"
             >
-              <span className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
+              <span className="flex size-16 items-center justify-center rounded-2xl bg-primary/10 transition-transform duration-300 group-hover:scale-110 group-hover:bg-primary/15">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={p.icone}
