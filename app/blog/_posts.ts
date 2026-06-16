@@ -24,26 +24,22 @@ const AUTORES: Record<string, Autor> = {
   redacao: {
     nome: "Redação Cadê",
     bio: "O time de conteúdo da Cadê Imóveis acompanha de perto o mercado de Uberlândia e traduz o que importa em guias práticos, diretos e sem juridiquês.",
-    avatar:
-      "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=200&q=80",
+    avatar: "/logo-cade.svg",
   },
   marina: {
     nome: "Marina Teixeira",
     bio: "Especialista em crédito imobiliário, ajuda famílias a saírem do aluguel há mais de dez anos. Escreve sobre financiamento, FGTS e planejamento de compra.",
-    avatar:
-      "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80",
+    avatar: "/blog/autores/marina.webp",
   },
   rafael: {
     nome: "Rafael Andrade",
     bio: "Corretor e consultor de mercado em Uberlândia. Conhece bairro por bairro da cidade e gosta de explicar o que está por trás dos números.",
-    avatar:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
+    avatar: "/blog/autores/rafael.webp",
   },
   juliana: {
     nome: "Juliana Mendes",
     bio: "Advogada imobiliária. Defende que um bom negócio começa com a documentação em dia e adora desburocratizar contrato para quem não é da área.",
-    avatar:
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=200&q=80",
+    avatar: "/blog/autores/juliana.webp",
   },
 };
 
