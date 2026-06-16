@@ -76,8 +76,6 @@ export function HomeHero() {
       {/* Escurecimento SUTIL só pra legibilidade (a imagem continua bem
           visível) — substitui a "lavada" branca que apagava o vídeo. */}
       <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/45 via-black/25 to-black/40" />
-      {/* Conector com a seção de baixo (clara): fade pro fundo só na base. */}
-      <div className="absolute inset-x-0 bottom-0 -z-10 h-28 bg-gradient-to-b from-transparent to-background" />
 
       <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 px-4 py-24 text-center md:px-6 md:py-36">
         <h1
