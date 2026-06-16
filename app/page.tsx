@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/publico/site-header";
 import { SiteFooter } from "@/components/publico/site-footer";
 import { ImovelCard, type ImovelCardData } from "@/components/publico/imovel-card";
 import { createClient } from "@/lib/supabase/server";
+import { Reveal } from "@/components/publico/reveal";
 import { HomeHero } from "./_home/hero";
 import { HomeComoFunciona } from "./_home/como-funciona";
 import { HomeBairros } from "./_home/bairros";
@@ -135,9 +136,15 @@ export default async function Home() {
           </div>
         </section>
 
-        <HomeComoFunciona />
-        <HomeBairros />
-        <HomeCtaAnuncie />
+        <Reveal>
+          <HomeComoFunciona />
+        </Reveal>
+        <Reveal>
+          <HomeBairros />
+        </Reveal>
+        <Reveal>
+          <HomeCtaAnuncie />
+        </Reveal>
       </main>
 
       <SiteFooter />

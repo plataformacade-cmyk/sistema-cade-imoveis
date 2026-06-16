@@ -128,3 +128,30 @@
     @apply font-sans;
   }
 }
+
+/* Movimento CONTÍNUO (não usa @media reduced-motion de propósito:
+   o dono navega com reduced-motion e precisa ver vida na tela). */
+@keyframes ken-burns {
+  from {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.12) translate3d(0, -1%, 0);
+  }
+}
+.animate-ken-burns {
+  animation: ken-burns 22s ease-in-out infinite alternate;
+}
+
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.animate-float {
+  animation: float-soft 4.5s ease-in-out infinite;
+}
