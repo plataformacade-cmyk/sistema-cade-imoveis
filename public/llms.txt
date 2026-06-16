@@ -1,0 +1,20 @@
+# Cadê Imóveis
+
+> Marketplace imobiliário de Uberlândia/MG. As pessoas buscam, anunciam e negociam casas, apartamentos, imóveis comerciais e terrenos direto pela plataforma, conversando com quem anuncia, sem intermediário que some. Cobre venda e locação, do anúncio ao contrato.
+
+A Cadê Imóveis conecta quem procura um imóvel a quem anuncia, com transparência e contato direto. O foco é Uberlândia e região do Triângulo Mineiro.
+
+## Para quem busca
+- [Buscar imóveis](https://cade-imoveis-app.vercel.app/plataforma): casas, apartamentos, comerciais e terrenos em Uberlândia, com filtros por bairro, tipo e valor.
+- [Como funciona para quem tem interesse](https://cade-imoveis-app.vercel.app/como-funciona/interessado)
+
+## Para quem anuncia
+- [Como funciona para proprietários](https://cade-imoveis-app.vercel.app/como-funciona/proprietario)
+- [Como funciona para corretores](https://cade-imoveis-app.vercel.app/como-funciona/corretor)
+- [Anunciar / criar conta](https://cade-imoveis-app.vercel.app/cadastro)
+
+## Conteúdo (guias do mercado imobiliário de Uberlândia)
+- [Blog da Cadê](https://cade-imoveis-app.vercel.app/blog): guias sobre financiamento, FGTS, Minha Casa Minha Vida, documentação, ITBI, aluguel, garantias, avaliação de preço e guias de bairro (Santa Mônica, Jardim Karaíba, Granja Marileusa, Centro e outros).
+
+## Sobre
+- [Sobre a Cadê](https://cade-imoveis-app.vercel.app/sobre)

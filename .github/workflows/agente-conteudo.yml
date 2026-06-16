@@ -1,0 +1,36 @@
+name: Agente de conteúdo (blog Cadê)
+
+# Roda 3x por dia (08:00, 13:00 e 18:00 BRT = 11/16/21 UTC). Gera artigos
+# otimizados de SEO/GEO e dá commit — o push publica na Vercel.
+on:
+  schedule:
+    - cron: "0 11 * * *"
+    - cron: "0 16 * * *"
+    - cron: "0 21 * * *"
+  workflow_dispatch: {} # permite rodar manualmente pelo botão do GitHub
+
+permissions:
+  contents: write
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Gerar artigos do dia
+        env:
+          # ⚠️ Configure estes secrets no GitHub (Settings > Secrets > Actions).
+          # Sem eles, o script roda em dry-run (artigo de exemplo).
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          IDEOGRAM_API_KEY: ${{ secrets.IDEOGRAM_API_KEY }}
+        run: node scripts/agente-conteudo.mjs --quantos 1
+      - name: Commit e push
+        run: |
+          git config user.name "agente-conteudo"
+          git config user.email "conteudo@cadeimoveis.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "conteudo: artigo automatico do dia"
+          git push

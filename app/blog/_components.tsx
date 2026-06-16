@@ -1,9 +1,43 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Clock, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { type Post, formatarData } from "./_posts";
+
+/**
+ * Renderiza um parágrafo do artigo convertendo links markdown `[texto](/rota)`
+ * em <Link> (interno) ou <a> (externo). Links internos são ouro pra SEO/GEO.
+ */
+export function TextoComLinks({ texto }: { texto: string }): ReactNode {
+  const partes: ReactNode[] = [];
+  const re = /\[([^\]]+)\]\(([^)]+)\)/g;
+  let ultimo = 0;
+  let m: RegExpExecArray | null;
+  let i = 0;
+  while ((m = re.exec(texto)) !== null) {
+    if (m.index > ultimo) partes.push(texto.slice(ultimo, m.index));
+    const [, rotulo, href] = m;
+    if (href.startsWith("/")) {
+      partes.push(
+        <Link key={i} href={href} className="font-medium text-primary underline underline-offset-2">
+          {rotulo}
+        </Link>,
+      );
+    } else {
+      partes.push(
+        <a key={i} href={href} className="font-medium text-primary underline underline-offset-2">
+          {rotulo}
+        </a>,
+      );
+    }
+    ultimo = m.index + m[0].length;
+    i++;
+  }
+  if (ultimo < texto.length) partes.push(texto.slice(ultimo));
+  return partes;
+}
 
 /** Linha de autor: avatar + nome (+ data + tempo de leitura opcional). */
 export function LinhaAutor({

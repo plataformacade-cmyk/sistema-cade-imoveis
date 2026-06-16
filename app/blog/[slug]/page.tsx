@@ -7,7 +7,8 @@ import { Reveal } from "@/components/publico/reveal";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { POSTS, getPost, formatarData } from "../_posts";
-import { CardPost, BlocoNewsletter } from "../_components";
+import { CardPost, BlocoNewsletter, TextoComLinks } from "../_components";
+import { SITE, articleLd, faqLd, breadcrumbLd } from "@/lib/seo";
 
 export function generateStaticParams() {
   return POSTS.map((p) => ({ slug: p.slug }));
@@ -45,6 +46,25 @@ export default async function PostPage({
 
   if (!post) notFound();
 
+  const urlPost = `${SITE.url}/blog/${post.slug}`;
+  const jsonld = [
+    articleLd({
+      titulo: post.titulo,
+      resumo: post.resumo,
+      url: urlPost,
+      capa: post.capa,
+      data: post.data,
+      atualizado: post.atualizado,
+      autor: post.autor.nome,
+    }),
+    breadcrumbLd([
+      { nome: "Início", url: "/" },
+      { nome: "Blog", url: "/blog" },
+      { nome: post.titulo, url: `/blog/${post.slug}` },
+    ]),
+    ...(post.faq && post.faq.length ? [faqLd(post.faq)] : []),
+  ];
+
   const relacionados = POSTS.filter(
     (p) => p.slug !== post.slug && p.categoria === post.categoria,
   ).slice(0, 3);
@@ -67,6 +87,13 @@ export default async function PostPage({
       <SiteHeader />
 
       <main className="flex-1">
+        {jsonld.map((bloco, i) => (
+          <script
+            key={i}
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(bloco) }}
+          />
+        ))}
         <article>
           {/* Cabeçalho */}
           <div className="mx-auto max-w-3xl px-4 pt-10 md:px-6 md:pt-16">
@@ -140,10 +167,40 @@ export default async function PostPage({
                     {bloco.replace(/^##\s+/, "")}
                   </h2>
                 ) : (
-                  <p key={i}>{bloco}</p>
+                  <p key={i}>
+                    <TextoComLinks texto={bloco} />
+                  </p>
                 ),
               )}
             </div>
+
+            {/* FAQ — bloco visual + alimenta o FAQPage (JSON-LD), o tipo mais
+                extraído pelas IAs. */}
+            {post.faq && post.faq.length > 0 && (
+              <div className="mt-12 border-t pt-8">
+                <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                  Perguntas frequentes
+                </h2>
+                <div className="mt-6 space-y-3">
+                  {post.faq.map((f) => (
+                    <details
+                      key={f.pergunta}
+                      className="group rounded-2xl bg-muted/40 p-5 ring-1 ring-foreground/10"
+                    >
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-semibold">
+                        {f.pergunta}
+                        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground transition-transform group-open:rotate-45">
+                          +
+                        </span>
+                      </summary>
+                      <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+                        {f.resposta}
+                      </p>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Tags */}
             {post.tags.length > 0 && (

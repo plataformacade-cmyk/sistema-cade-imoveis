@@ -15,6 +15,7 @@ import {
 import { BotaoInteresse } from "./_components/botao-interesse";
 import { AcoesImovel } from "./_components/acoes-imovel";
 import { infoDoBairro } from "./_bairros";
+import { SITE, imovelLd, breadcrumbLd, slugBairro } from "@/lib/seo";
 
 type ImovelDetalhe = {
   id: string;
@@ -120,6 +121,33 @@ export default async function ImovelDetalhePage({
   const comodidades = extrairComodidades(imovel.caracteristicas);
   const bairroInfo = infoDoBairro(imovel.bairro);
 
+  const urlImovel = `${SITE.url}/plataforma/imoveis/${imovel.id}`;
+  const jsonld = [
+    imovelLd({
+      titulo,
+      descricao: `${tipoLabel} em ${imovel.bairro ?? "Uberlândia"} com ${imovel.area_m2 ?? "—"} m². Negocie direto pela Cadê Imóveis.`,
+      url: urlImovel,
+      fotos: fotos.slice(0, 6),
+      preco: imovel.valor_anuncio,
+      logradouro: imovel.logradouro,
+      numero: imovel.numero,
+      bairro: imovel.bairro,
+      cidade: imovel.cidade,
+      uf: imovel.uf,
+      cep: imovel.cep,
+      area: imovel.area_m2,
+      quartos: imovel.quartos,
+    }),
+    breadcrumbLd([
+      { nome: "Início", url: "/" },
+      { nome: "Imóveis", url: "/plataforma" },
+      ...(imovel.bairro
+        ? [{ nome: imovel.bairro, url: `/imoveis-em/${slugBairro(imovel.bairro)}` }]
+        : []),
+      { nome: titulo, url: `/plataforma/imoveis/${imovel.id}` },
+    ]),
+  ];
+
   const specs = [
     imovel.quartos != null && {
       icon: BedDouble,
@@ -149,6 +177,13 @@ export default async function ImovelDetalhePage({
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6 md:py-10">
+      {jsonld.map((bloco, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(bloco) }}
+        />
+      ))}
       <Link
         href="/plataforma"
         className={buttonVariants({

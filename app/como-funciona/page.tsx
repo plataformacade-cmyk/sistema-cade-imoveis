@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/publico/site-footer";
 import { Reveal } from "@/components/publico/reveal";
 import { buttonVariants } from "@/components/ui/button";
 import { PERFIS_LISTA } from "./_perfis";
+import { faqLd } from "@/lib/seo";
 
 export const metadata = {
   title: "Como funciona — Cadê Imóveis",
@@ -39,6 +40,10 @@ export default function ComoFuncionaPage() {
   return (
     <>
       <SiteHeader />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd(FAQ)) }}
+      />
 
       <main className="flex-1">
         {/* Hero */}
