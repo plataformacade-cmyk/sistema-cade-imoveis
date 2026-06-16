@@ -11,8 +11,7 @@ const TIPOS = [
   { value: "terreno", label: "Terreno" },
 ] as const;
 
-const FOTO_HERO =
-  "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1920&q=80";
+const FOTO_HERO = "/hero-uberlandia.webp"; // gerado pelo Higgsfield (soul_location)
 
 const STATS = [
   { n: "12+", l: "imóveis ativos" },

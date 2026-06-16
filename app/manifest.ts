@@ -14,16 +14,10 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: "pt-BR",
     icons: [
       {
-        // Ícone gerado por código em app/icon.tsx (quadrado laranja com "C").
-        src: "/icon",
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "any",
-      },
-      {
-        src: "/favicon.ico",
+        src: "/logo-cade.svg",
         sizes: "any",
-        type: "image/x-icon",
+        type: "image/svg+xml",
+        purpose: "any",
       },
     ],
   };

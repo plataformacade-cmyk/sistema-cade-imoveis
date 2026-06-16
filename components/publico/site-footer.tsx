@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Home } from "lucide-react";
 
 const COLUNAS = [
   {
@@ -33,9 +32,8 @@ export function SiteFooter() {
       <div className="mx-auto grid max-w-7xl grid-cols-2 gap-8 px-4 py-12 md:grid-cols-4 md:px-6">
         <div className="col-span-2 md:col-span-1">
           <Link href="/" className="flex items-center gap-2 font-semibold">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Home className="size-4" />
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-cade.svg" alt="" className="size-8" />
             Cadê Imóveis
           </Link>
           <p className="mt-3 text-sm text-muted-foreground">
