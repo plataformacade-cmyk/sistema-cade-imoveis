@@ -264,6 +264,30 @@ html.intro-ativa .midia-chega {
   animation-play-state: paused;
 }
 
+/* Marquee (faixa rolante) — duas direções, loop sem emenda (conteúdo
+   duplicado, desloca 50%). Movimento CONTÍNUO (fora do reduced-motion, como
+   o Ken Burns) pra o dono ver vida; pausa no hover. */
+@keyframes marquee-left {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes marquee-right {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+.marquee-left {
+  animation: marquee-left 34s linear infinite;
+  width: max-content;
+}
+.marquee-right {
+  animation: marquee-right 28s linear infinite;
+  width: max-content;
+}
+.marquee-mask:hover .marquee-left,
+.marquee-mask:hover .marquee-right {
+  animation-play-state: paused;
+}
+
 /* Flutuação contínua e sutil dos ícones próprios (gerados no Higgsfield).
    FORA do @media reduced-motion de propósito: é movimento contínuo de baixo
    risco e o dono (reduced-motion ligado) precisa ver os ícones "vivos". */

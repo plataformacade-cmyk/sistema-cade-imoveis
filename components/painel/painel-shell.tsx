@@ -64,6 +64,18 @@ const LINKS: Item[] = [
   },
 ];
 
+function Marca() {
+  return (
+    <Link href="/painel" className="flex items-center gap-2 font-semibold">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logo-cade.svg" alt="" className="size-7" />
+      <span className="tracking-tight">
+        Cadê<span className="text-primary"> Imóveis</span>
+      </span>
+    </Link>
+  );
+}
+
 function Nav({
   isAdmin,
   onNavigate,
@@ -72,31 +84,69 @@ function Nav({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const visiveis = LINKS.filter((l) => !l.admin || isAdmin);
+  const temAdmin = visiveis.some((l) => l.admin);
+
   return (
-    <nav className="flex flex-col gap-1 p-2">
-      {LINKS.filter((l) => !l.admin || isAdmin).map((l) => {
+    <nav className="flex flex-col gap-0.5 p-3">
+      {visiveis.map((l, i) => {
         const Icon = l.icon;
         const active =
           l.href === "/painel"
             ? pathname === "/painel"
             : pathname.startsWith(l.href);
+        // Rótulo de seção antes do 1º item admin.
+        const primeiroAdmin = temAdmin && l.admin && !visiveis[i - 1]?.admin;
         return (
-          <Link
-            key={l.href}
-            href={l.href}
-            onClick={onNavigate}
-            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
-              active
-                ? "bg-primary text-primary-foreground"
-                : "hover:bg-accent hover:text-accent-foreground"
-            }`}
-          >
-            <Icon className="size-4" />
-            {l.label}
-          </Link>
+          <div key={l.href}>
+            {primeiroAdmin && (
+              <p className="px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Administração
+              </p>
+            )}
+            <Link
+              href={l.href}
+              onClick={onNavigate}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                active
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <Icon className="size-4 shrink-0" />
+              {l.label}
+            </Link>
+          </div>
         );
       })}
     </nav>
+  );
+}
+
+function BlocoUsuario({ email }: { email: string }) {
+  return (
+    <div className="border-t p-3">
+      <div className="flex items-center gap-2.5 rounded-lg px-2 py-2">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary uppercase">
+          {email.charAt(0)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{email}</p>
+          <p className="text-xs text-muted-foreground">Minha conta</p>
+        </div>
+        <form action={signout}>
+          <Button
+            variant="ghost"
+            size="icon"
+            type="submit"
+            title="Sair"
+            className="size-8 shrink-0"
+          >
+            <LogOut className="size-4" />
+          </Button>
+        </form>
+      </div>
+    </div>
   );
 }
 
@@ -112,43 +162,48 @@ export function PainelShell({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="bg-sidebar hidden w-60 shrink-0 border-r md:block">
-        <div className="flex h-14 items-center border-b px-4 font-semibold">
-          Cadê Imóveis
+    <div className="flex min-h-screen bg-muted/30">
+      <aside className="hidden w-64 shrink-0 flex-col border-r bg-card md:flex">
+        <div className="flex h-16 items-center border-b px-5">
+          <Marca />
         </div>
-        <Nav isAdmin={isAdmin} />
+        <div className="flex-1 overflow-y-auto">
+          <Nav isAdmin={isAdmin} />
+        </div>
+        <BlocoUsuario email={email} />
       </aside>
 
       <div className="flex flex-1 flex-col">
-        <header className="flex h-14 items-center justify-between border-b px-4">
-          <div className="flex items-center gap-2">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card/80 px-4 backdrop-blur md:px-6">
+          <div className="flex items-center gap-2 md:hidden">
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger
                 render={
-                  <Button variant="ghost" size="icon" className="md:hidden">
+                  <Button variant="ghost" size="icon">
                     <Menu className="size-5" />
                   </Button>
                 }
               />
-              <SheetContent side="left" className="w-64 p-0">
-                <SheetTitle className="px-4 py-4 text-left">
-                  Cadê Imóveis
+              <SheetContent side="left" className="w-72 p-0">
+                <SheetTitle className="flex h-16 items-center border-b px-5 text-left">
+                  <Marca />
                 </SheetTitle>
                 <Nav isAdmin={isAdmin} onNavigate={() => setOpen(false)} />
               </SheetContent>
             </Sheet>
+            <Marca />
           </div>
+          <div className="hidden md:block" />
           <div className="flex items-center gap-3">
-            <span className="text-muted-foreground hidden text-sm sm:inline">
+            <Link
+              href="/"
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Ver site
+            </Link>
+            <span className="text-sm text-muted-foreground hidden sm:inline">
               {email}
             </span>
-            <form action={signout}>
-              <Button variant="outline" size="sm" type="submit">
-                <LogOut className="mr-2 size-4" />
-                Sair
-              </Button>
-            </form>
           </div>
         </header>
         <main className="flex-1 p-4 md:p-6">{children}</main>
