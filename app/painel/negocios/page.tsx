@@ -1,29 +1,18 @@
 import Link from "next/link";
+import { ArrowRight, Handshake, MapPin } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { buttonVariants } from "@/components/ui/button";
+import { getSessao } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  formatBRL,
-  rotuloStatus,
-  variantStatus,
-  enderecoResumido,
-} from "./_lib";
+import { buttonVariants } from "@/components/ui/button";
+import { formatBRL, rotuloStatus, variantStatus, enderecoResumido } from "./_lib";
 import { AbrirNegocioDialog } from "./_components/abrir-negocio-dialog";
-import { StatusSelect } from "./_components/status-select";
 
 type ImovelEmbed = {
   logradouro: string | null;
   numero: string | null;
   bairro: string | null;
   cidade: string | null;
+  fotos: string[] | null;
 } | null;
 
 type NegocioLinha = {
@@ -32,98 +21,115 @@ type NegocioLinha = {
   valor_acordado: number | null;
   criado_em: string | null;
   imoveis: ImovelEmbed;
-  papeis_negocio: { count: number }[];
 };
 
 export default async function NegociosPage() {
+  const sessao = await getSessao();
   const supabase = await createClient();
+  const podeAbrir = sessao?.papel === "admin";
 
   const [negociosRes, imoveisRes] = await Promise.all([
     supabase
       .from("negocios")
       .select(
-        "id, status, valor_acordado, criado_em, imoveis(logradouro, numero, bairro, cidade), papeis_negocio(count)",
+        "id, status, valor_acordado, criado_em, imoveis(logradouro, numero, bairro, cidade, fotos)",
       )
       .order("criado_em", { ascending: false }),
-    supabase
-      .from("imoveis")
-      .select("id, logradouro, numero, bairro, cidade")
-      .order("logradouro", { ascending: true }),
+    podeAbrir
+      ? supabase
+          .from("imoveis")
+          .select("id, logradouro, numero, bairro, cidade")
+          .order("logradouro", { ascending: true })
+      : Promise.resolve({ data: [] as never[] }),
   ]);
 
   const negocios = (negociosRes.data ?? []) as unknown as NegocioLinha[];
-  const imoveis = imoveisRes.data ?? [];
+  const imoveis = (imoveisRes.data ?? []) as never[];
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Negócios</h1>
-          <p className="text-muted-foreground text-sm">
-            Negociações entre proprietários, compradores e corretores.
+          <h1 className="text-2xl font-semibold tracking-tight">Negociações</h1>
+          <p className="text-sm text-muted-foreground">
+            {sessao?.papel === "cliente"
+              ? "Os imóveis em que você demonstrou interesse e as conversas em andamento."
+              : "Acompanhe cada negociação: imóvel, conversa e propostas num só lugar."}
           </p>
         </div>
-        <AbrirNegocioDialog imoveis={imoveis} />
+        {podeAbrir && <AbrirNegocioDialog imoveis={imoveis} />}
       </div>
 
       {negociosRes.error ? (
-        <p className="text-destructive text-sm">
-          Não foi possível carregar os negócios.
+        <p className="text-sm text-destructive">
+          Não foi possível carregar as negociações.
         </p>
       ) : negocios.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          Nenhum negócio aberto ainda.
-        </p>
+        <div className="flex flex-col items-center gap-3 rounded-2xl border bg-card px-6 py-16 text-center">
+          <span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Handshake className="size-6" />
+          </span>
+          <p className="font-medium">Nenhuma negociação ainda</p>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Encontrou um imóvel que gostou? Demonstre interesse e a conversa
+            começa aqui.
+          </p>
+          <Link href="/plataforma" className={buttonVariants({ className: "mt-2" })}>
+            Buscar imóveis
+          </Link>
+        </div>
       ) : (
-        <div className="rounded-xl ring-1 ring-foreground/10">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Imóvel</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Valor acordado</TableHead>
-                <TableHead className="text-right">Participantes</TableHead>
-                <TableHead className="w-px" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {negocios.map((n) => {
-                const participantes = n.papeis_negocio?.[0]?.count ?? 0;
-                return (
-                  <TableRow key={n.id}>
-                    <TableCell className="max-w-xs whitespace-normal">
-                      {enderecoResumido(n.imoveis)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={variantStatus(n.status)}>
-                        {rotuloStatus(n.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatBRL(n.valor_acordado)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {participantes}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-2">
-                        <StatusSelect negocioId={n.id} status={n.status} />
-                        <Link
-                          href={`/painel/negocios/${n.id}`}
-                          className={buttonVariants({
-                            variant: "outline",
-                            size: "sm",
-                          })}
-                        >
-                          Ver
-                        </Link>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {negocios.map((n) => {
+            const foto = n.imoveis?.fotos?.[0];
+            return (
+              <Link
+                key={n.id}
+                href={`/painel/negocios/${n.id}`}
+                className="group flex flex-col overflow-hidden rounded-2xl border bg-card transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5"
+              >
+                <div className="relative aspect-[16/10] overflow-hidden bg-muted">
+                  {foto ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={foto}
+                      alt=""
+                      loading="lazy"
+                      className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex size-full items-center justify-center text-muted-foreground">
+                      <MapPin className="size-6" />
+                    </div>
+                  )}
+                  <Badge
+                    variant={variantStatus(n.status)}
+                    className="absolute left-3 top-3 shadow-sm"
+                  >
+                    {rotuloStatus(n.status)}
+                  </Badge>
+                </div>
+                <div className="flex flex-1 flex-col gap-2 p-4">
+                  <p className="flex items-start gap-1.5 text-sm font-medium">
+                    <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
+                    {enderecoResumido(n.imoveis)}
+                  </p>
+                  {n.valor_acordado != null && (
+                    <p className="text-sm text-muted-foreground">
+                      Valor acordado:{" "}
+                      <span className="font-semibold text-foreground">
+                        {formatBRL(n.valor_acordado)}
+                      </span>
+                    </p>
+                  )}
+                  <span className="mt-auto inline-flex items-center gap-1.5 pt-2 text-sm font-medium text-primary">
+                    Abrir negociação
+                    <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
