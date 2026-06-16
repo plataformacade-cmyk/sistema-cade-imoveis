@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bath, BedDouble, Car, MapPin, Ruler } from "lucide-react";
+import { ArrowRight, Bath, BedDouble, Car, MapPin, Ruler } from "lucide-react";
 
 export type ImovelCardData = {
   id: string;
@@ -35,7 +35,7 @@ export function ImovelCard({ imovel }: { imovel: ImovelCardData }) {
   return (
     <Link
       href={`/plataforma/imoveis/${imovel.id}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border bg-card transition-shadow hover:shadow-lg"
+      className="group flex flex-col overflow-hidden rounded-2xl border bg-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5"
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
         {foto ? (
@@ -51,6 +51,12 @@ export function ImovelCard({ imovel }: { imovel: ImovelCardData }) {
             Sem foto
           </div>
         )}
+        {/* Reveal no hover: gradiente sobe + dica "Ver detalhes" (briefing item 5). */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/0 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+        <span className="pointer-events-none absolute bottom-3 right-3 inline-flex translate-y-2 items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-foreground opacity-0 shadow-sm backdrop-blur transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100">
+          Ver detalhes
+          <ArrowRight className="size-3.5" />
+        </span>
         <span className="absolute left-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-xs font-semibold shadow-sm backdrop-blur">
           {tipo}
         </span>

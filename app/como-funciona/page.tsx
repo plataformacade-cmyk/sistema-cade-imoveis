@@ -1,95 +1,16 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { SiteHeader } from "@/components/publico/site-header";
 import { SiteFooter } from "@/components/publico/site-footer";
-import { buttonVariants } from "@/components/ui/button";
 import { Reveal } from "@/components/publico/reveal";
-import {
-  ClipboardList,
-  Megaphone,
-  MessageCircle,
-  Handshake,
-  CheckCircle2,
-  Search,
-  Heart,
-  CalendarCheck,
-  KeyRound,
-} from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { PERFIS_LISTA } from "./_perfis";
 
 export const metadata = {
   title: "Como funciona — Cadê Imóveis",
   description:
-    "Entenda como anunciar e como buscar imóveis na Cadê Imóveis: simples, transparente e humano, do primeiro clique até a chave na mão.",
+    "Entenda como a Cadê funciona para o seu perfil: proprietário, corretor ou interessado. Simples, transparente e humano, do primeiro clique à chave na mão.",
 };
-
-const PASSOS_ANUNCIA = [
-  {
-    icone: ClipboardList,
-    titulo: "Cadastre seu imóvel",
-    texto:
-      "Preencha as informações, suba boas fotos e defina o valor. Leva poucos minutos.",
-    foto: "/institucional/anunciar.webp",
-    fotoAlt: "Casa moderna pronta para ser anunciada na Cadê",
-  },
-  {
-    icone: Megaphone,
-    titulo: "Publique para a cidade toda",
-    texto:
-      "Seu anúncio entra no ar e aparece para quem está procurando exatamente o que você oferece.",
-  },
-  {
-    icone: MessageCircle,
-    titulo: "Receba os interesses",
-    texto:
-      "Pessoas realmente interessadas demonstram interesse e chegam direto até você, sem ruído.",
-  },
-  {
-    icone: Handshake,
-    titulo: "Negocie com clareza",
-    texto:
-      "Converse, tire dúvidas e combine as condições com total transparência para os dois lados.",
-  },
-  {
-    icone: CheckCircle2,
-    titulo: "Feche o negócio",
-    texto:
-      "Alinhou tudo? É hora de assinar e comemorar. A gente acompanha até o final.",
-  },
-];
-
-const PASSOS_BUSCA = [
-  {
-    icone: Search,
-    titulo: "Busque do seu jeito",
-    texto:
-      "Filtre por bairro, preço, tipo e tamanho até encontrar o imóvel que combina com você.",
-    foto: "/institucional/buscar.webp",
-    fotoAlt: "Sala de estar de um imóvel à espera de novos moradores",
-  },
-  {
-    icone: Heart,
-    titulo: "Demonstre interesse",
-    texto:
-      "Gostou? Um clique avisa quem anuncia que você quer saber mais. Sem compromisso.",
-  },
-  {
-    icone: MessageCircle,
-    titulo: "Converse direto",
-    texto:
-      "Tire suas dúvidas falando com quem realmente conhece o imóvel — gente de verdade.",
-  },
-  {
-    icone: CalendarCheck,
-    titulo: "Agende a visita",
-    texto:
-      "Combine o melhor dia e horário para conhecer o imóvel pessoalmente, no seu ritmo.",
-  },
-  {
-    icone: KeyRound,
-    titulo: "Feche e mude-se",
-    texto:
-      "Encontrou o seu lar? A gente te ajuda a fechar com segurança até a chave na mão.",
-  },
-];
 
 const FAQ = [
   {
@@ -112,75 +33,7 @@ const FAQ = [
     resposta:
       "Sim! Do Centro ao Granja Marileusa, passando por Santa Mônica, Tibery, Jardim Karaíba e dezenas de outros bairros. Conhecemos a cidade de ponta a ponta.",
   },
-  {
-    pergunta: "Como funciona a visita ao imóvel?",
-    resposta:
-      "Depois de demonstrar interesse e conversar, vocês combinam o melhor dia e horário diretamente. Tudo no seu tempo, sem pressão.",
-  },
 ];
-
-function Trilha({
-  titulo,
-  subtitulo,
-  cor,
-  passos,
-}: {
-  titulo: string;
-  subtitulo: string;
-  cor: string;
-  passos: typeof PASSOS_ANUNCIA;
-}) {
-  const fotoPasso = passos.find((p) => p.foto);
-
-  return (
-    <div className="rounded-2xl bg-card p-6 ring-1 ring-foreground/10 md:p-10">
-      <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
-        <div>
-          <span
-            className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${cor}`}
-          >
-            {subtitulo}
-          </span>
-          <h3 className="mt-4 text-2xl font-semibold tracking-tight md:text-3xl">
-            {titulo}
-          </h3>
-
-          <ol className="mt-8 space-y-6">
-            {passos.map((p, i) => (
-              <li key={p.titulo} className="flex gap-4">
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <p.icone className="size-5" />
-                </span>
-                <div>
-                  <p className="flex items-center gap-2 font-semibold">
-                    <span className="text-sm text-muted-foreground">
-                      Passo {i + 1}
-                    </span>
-                    {p.titulo}
-                  </p>
-                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                    {p.texto}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-
-        {fotoPasso?.foto && (
-          <div className="order-first lg:order-last">
-            <img
-              src={fotoPasso.foto}
-              alt={fotoPasso.fotoAlt ?? ""}
-              loading="lazy"
-              className="h-full min-h-64 w-full rounded-2xl object-cover shadow-lg shadow-foreground/5"
-            />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export default function ComoFuncionaPage() {
   return (
@@ -198,31 +51,49 @@ export default function ComoFuncionaPage() {
               Como funciona a Cadê Imóveis
             </h1>
             <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
-              Seja para anunciar ou para encontrar o seu próximo lar, a gente
-              tirou a burocracia do caminho. Veja como é fácil — em poucos passos,
-              do seu jeito.
+              A jornada muda um pouco dependendo de quem é você. Escolha o seu
+              perfil e veja, passo a passo, como a Cadê trabalha para você.
             </p>
           </Reveal>
         </section>
 
-        {/* Trilhas */}
-        <section className="mx-auto max-w-7xl space-y-10 px-4 py-16 md:px-6 md:py-24">
+        {/* Quem é você? — seletor de perfil */}
+        <section className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
           <Reveal>
-            <Trilha
-              subtitulo="Para quem anuncia"
-              titulo="Coloque seu imóvel para a cidade ver"
-              cor="bg-primary/10 text-primary"
-              passos={PASSOS_ANUNCIA}
-            />
+            <h2 className="text-center text-2xl font-semibold tracking-tight md:text-3xl">
+              Quem é você?
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground">
+              Toque no card que combina com o seu momento.
+            </p>
           </Reveal>
-          <Reveal delay={0.1}>
-            <Trilha
-              subtitulo="Para quem busca"
-              titulo="Encontre o lar que combina com você"
-              cor="bg-primary/10 text-primary"
-              passos={PASSOS_BUSCA}
-            />
-          </Reveal>
+
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            {PERFIS_LISTA.map((p, i) => (
+              <Reveal key={p.slug} delay={i * 0.08}>
+                <Link
+                  href={`/como-funciona/${p.slug}`}
+                  className="group flex h-full flex-col gap-4 rounded-2xl border bg-card p-7 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5"
+                >
+                  <span className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                    <p.icone className="size-7" />
+                  </span>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-semibold tracking-tight">
+                      {p.nome}
+                    </h3>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                      {p.chamada}
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary">
+                    Ver como funciona
+                    <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </Link>
+              </Reveal>
+            ))}
+          </div>
         </section>
 
         {/* FAQ */}
@@ -260,35 +131,34 @@ export default function ComoFuncionaPage() {
 
         {/* CTA */}
         <section className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
-          <Reveal className="overflow-hidden rounded-2xl bg-primary px-6 py-14 text-center text-primary-foreground md:px-12 md:py-20 block">
-            <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-balance md:text-4xl">
-              Pronto para começar?
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-lg text-primary-foreground/85">
-              Anuncie seu imóvel ou encontre o próximo lar em Uberlândia. É rápido,
-              transparente e cheio de gente de verdade para te ajudar.
-            </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <Link
-                href="/cadastro"
-                className={buttonVariants({
-                  variant: "secondary",
-                  size: "lg",
-                })}
-              >
-                Anunciar imóvel
-              </Link>
-              <Link
-                href="/plataforma"
-                className={buttonVariants({
-                  variant: "outline",
-                  size: "lg",
-                  className:
-                    "border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground",
-                })}
-              >
-                Buscar imóveis
-              </Link>
+          <Reveal>
+            <div className="overflow-hidden rounded-2xl bg-primary px-6 py-14 text-center text-primary-foreground md:px-12 md:py-20">
+              <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-balance md:text-4xl">
+                Pronto para começar?
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl text-lg text-primary-foreground/85">
+                Anuncie seu imóvel ou encontre o próximo lar em Uberlândia. É
+                rápido, transparente e cheio de gente de verdade para te ajudar.
+              </p>
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
+                <Link
+                  href="/cadastro"
+                  className={buttonVariants({ variant: "secondary", size: "lg" })}
+                >
+                  Anunciar imóvel
+                </Link>
+                <Link
+                  href="/plataforma"
+                  className={buttonVariants({
+                    variant: "outline",
+                    size: "lg",
+                    className:
+                      "border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground",
+                  })}
+                >
+                  Buscar imóveis
+                </Link>
+              </div>
             </div>
           </Reveal>
         </section>
