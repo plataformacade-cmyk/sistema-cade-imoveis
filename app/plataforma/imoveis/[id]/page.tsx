@@ -16,6 +16,10 @@ import { BotaoInteresse } from "./_components/botao-interesse";
 
 type ImovelDetalhe = {
   id: string;
+  logradouro: string | null;
+  numero: string | null;
+  complemento: string | null;
+  cep: string | null;
   bairro: string | null;
   cidade: string | null;
   uf: string | null;
@@ -82,9 +86,8 @@ export default async function ImovelDetalhePage({
   const supabase = await createClient();
   const { data } = await supabase
     .from("imoveis")
-    // LGPD: NÃO seleciona logradouro/numero/complemento/cep nem contato.
     .select(
-      "id, bairro, cidade, uf, tipo, area_m2, quartos, vagas, ano_construcao, caracteristicas, valor_anuncio, fotos, status",
+      "id, logradouro, numero, complemento, cep, bairro, cidade, uf, tipo, area_m2, quartos, vagas, ano_construcao, caracteristicas, valor_anuncio, fotos, status",
     )
     .eq("id", id)
     .single();
@@ -101,6 +104,17 @@ export default async function ImovelDetalhePage({
       ? `${imovel.cidade}/${imovel.uf}`
       : (imovel.cidade ?? "");
   const local = [imovel.bairro, cidadeUf].filter(Boolean).join(" · ");
+  const ruaNumero = [imovel.logradouro, imovel.numero]
+    .filter(Boolean)
+    .join(", ");
+  const enderecoCompleto = [
+    ruaNumero,
+    imovel.complemento,
+    [imovel.bairro, cidadeUf].filter(Boolean).join(" · "),
+    imovel.cep ? `CEP ${imovel.cep}` : null,
+  ]
+    .filter(Boolean)
+    .join(" — ");
   const comodidades = extrairComodidades(imovel.caracteristicas);
 
   const specs = [
@@ -202,10 +216,10 @@ export default async function ImovelDetalhePage({
               {tipoLabel}
             </span>
             <h1 className="text-3xl font-semibold tracking-tight">{titulo}</h1>
-            {local && (
+            {(ruaNumero || local) && (
               <p className="flex items-center gap-1.5 text-muted-foreground">
-                <MapPin className="size-4" />
-                {local}
+                <MapPin className="size-4 shrink-0" />
+                {[ruaNumero, local].filter(Boolean).join(" · ")}
               </p>
             )}
           </header>
@@ -272,12 +286,14 @@ export default async function ImovelDetalhePage({
           {/* Mapa (placeholder) */}
           <section className="flex flex-col gap-3">
             <h2 className="text-xl font-semibold">Localização</h2>
-            <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-2xl border bg-muted/40 text-center">
-              <MapPin className="size-8 text-muted-foreground" />
-              <p className="font-medium">{local || "Localização aproximada"}</p>
-              <p className="max-w-xs text-xs text-muted-foreground">
-                O endereço exato é compartilhado após o contato com o anunciante.
-              </p>
+            <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-2xl border bg-muted/40 px-6 text-center">
+              <MapPin className="size-8 text-primary" />
+              <p className="font-medium">{ruaNumero || local}</p>
+              {enderecoCompleto && (
+                <p className="max-w-md text-sm text-muted-foreground">
+                  {enderecoCompleto}
+                </p>
+              )}
             </div>
           </section>
         </div>
