@@ -24,5 +24,6 @@ import { artigo as a20 } from "./reforma-que-valoriza-o-imovel-antes-de-vender";
 import { artigo as a21 } from "./santa-monica-guia-do-bairro";
 import { artigo as a22 } from "./seguro-fianca-caucao-ou-fiador-qual-escolher";
 import { artigo as a23 } from "./tendencias-do-mercado-imobiliario-de-uberlandia-em-2026";
+import { artigo as a24 } from "./tibery-guia-do-bairro-para-morar-e-alugar-guia-da-cade";
 
-export const ARTIGOS: ArtigoBase[] = [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23];
+export const ARTIGOS: ArtigoBase[] = [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24];
