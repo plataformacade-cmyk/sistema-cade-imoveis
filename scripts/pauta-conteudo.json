@@ -1,12 +1,42 @@
 [
-  { "tema": "Documentos para alugar um imóvel em Uberlândia", "publicado": false },
-  { "tema": "Tibery: guia do bairro para morar e alugar", "publicado": false },
-  { "tema": "Morada da Colina: vale a pena morar?", "publicado": false },
-  { "tema": "Como funciona a vistoria de imóvel na locação", "publicado": false },
-  { "tema": "Apartamento ou casa em Uberlandia: qual escolher", "publicado": false },
-  { "tema": "Custos do inquilino: condominio, IPTU e taxas", "publicado": false },
-  { "tema": "Como dar entrada no financiamento usando o FGTS", "publicado": false },
-  { "tema": "Imovel comercial em Uberlandia: o que avaliar antes de alugar", "publicado": false },
-  { "tema": "Saraiva e Brasil: guia dos bairros centrais de Uberlandia", "publicado": false },
-  { "tema": "Como negociar o preco de um imovel sem perder a oportunidade", "publicado": false }
+  {
+    "tema": "Documentos para alugar um imóvel em Uberlândia",
+    "publicado": true
+  },
+  {
+    "tema": "Tibery: guia do bairro para morar e alugar",
+    "publicado": false
+  },
+  {
+    "tema": "Morada da Colina: vale a pena morar?",
+    "publicado": false
+  },
+  {
+    "tema": "Como funciona a vistoria de imóvel na locação",
+    "publicado": false
+  },
+  {
+    "tema": "Apartamento ou casa em Uberlandia: qual escolher",
+    "publicado": false
+  },
+  {
+    "tema": "Custos do inquilino: condominio, IPTU e taxas",
+    "publicado": false
+  },
+  {
+    "tema": "Como dar entrada no financiamento usando o FGTS",
+    "publicado": false
+  },
+  {
+    "tema": "Imovel comercial em Uberlandia: o que avaliar antes de alugar",
+    "publicado": false
+  },
+  {
+    "tema": "Saraiva e Brasil: guia dos bairros centrais de Uberlandia",
+    "publicado": false
+  },
+  {
+    "tema": "Como negociar o preco de um imovel sem perder a oportunidade",
+    "publicado": false
+  }
 ]
