@@ -4,23 +4,18 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { Upload } from "lucide-react";
 import { toast } from "sonner";
 import { enviarDocumento, type DocumentoState } from "@/actions/documentos";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { createClient } from "@/lib/supabase/client";
 
-/**
- * Upload de um documento de um item do checklist. O arquivo vai direto do client
- * pro bucket privado `documentos-negocio` (path `${usuarioId}/...` pra passar na
- * RLS), e em seguida a Server Action grava a linha em `documentos`.
- */
 export function EnviarDocumentoItem({
   negocioId,
   usuarioId,
-  tipoDoc,
+  checklistItemId,
 }: {
   negocioId: string;
   usuarioId: string;
-  tipoDoc: string;
+  checklistItemId: string;
 }) {
   const [state, formAction, pending] = useActionState<DocumentoState, FormData>(
     enviarDocumento,
@@ -30,15 +25,10 @@ export function EnviarDocumentoItem({
   const [nomeArquivo, setNomeArquivo] = useState("");
   const [enviando, setEnviando] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
 
-  // Reage ao retorno da Server Action.
   useEffect(() => {
     if (state.message) {
       toast.success(state.message);
-      setArquivoUrl("");
-      setNomeArquivo("");
-      if (fileRef.current) fileRef.current.value = "";
     } else if (state.error) {
       toast.error(state.error);
     }
@@ -50,16 +40,16 @@ export function EnviarDocumentoItem({
     const supabase = createClient();
     try {
       const ext = file.name.split(".").pop() ?? "bin";
-      // Path começa com a pasta do usuário pra passar na RLS do bucket privado.
       const caminho = `${usuarioId}/${negocioId}/${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage
         .from("documentos-negocio")
         .upload(caminho, file, { upsert: false });
+
       if (error) {
         toast.error(`Falha ao enviar ${file.name}.`);
         return;
       }
-      // Guarda o path interno (bucket é privado — a leitura usa signed URL).
+
       setArquivoUrl(caminho);
       setNomeArquivo(file.name);
       toast.success("Arquivo enviado. Clique em Salvar para registrar.");
@@ -69,13 +59,13 @@ export function EnviarDocumentoItem({
   }
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      className="flex flex-wrap items-end gap-2"
-    >
+    <form action={formAction} className="flex flex-wrap items-end gap-2">
       <input type="hidden" name="negocio_id" value={negocioId} />
-      <input type="hidden" name="tipo_doc" value={tipoDoc} />
+      <input
+        type="hidden"
+        name="checklist_item_id"
+        value={checklistItemId}
+      />
       <input type="hidden" name="arquivo_url" value={arquivoUrl} />
 
       <div className="flex flex-col gap-1">

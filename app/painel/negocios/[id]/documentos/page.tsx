@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, FileText } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
-import { getSessao } from "@/lib/auth";
-import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -20,24 +18,34 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { getSessao } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { enderecoResumido } from "../../_lib";
+import { EnviarDocumentoItem } from "./_components/enviar-documento-item";
+import { GarantiaForm } from "./_components/garantia-form";
+import { StatusDocumentoButtons } from "./_components/status-documento-buttons";
 import {
-  checklistPara,
+  type ChecklistItem,
+  type PerfilChecklist,
+  PERFIL_CHECKLIST_LABEL,
+  PERFIL_CHECKLIST_ORDEM,
   rotuloGarantia,
   rotuloStatusDoc,
   rotuloTipoDoc,
+  statusAgregado,
   variantStatusDoc,
 } from "./_lib";
-import { EnviarDocumentoItem } from "./_components/enviar-documento-item";
-import { StatusDocumentoButtons } from "./_components/status-documento-buttons";
-import { GarantiaForm } from "./_components/garantia-form";
 
 type Documento = {
   id: string;
+  checklist_item_id: string | null;
   tipo_doc: string;
+  perfil: PerfilChecklist | null;
   arquivo_url: string;
   status: string;
+  motivo_reprovacao: string | null;
   criado_em: string | null;
+  revisado_em: string | null;
 };
 
 type ParticipanteEmbed = {
@@ -69,10 +77,105 @@ const fmtDataHora = new Intl.DateTimeFormat("pt-BR", {
 });
 
 function formatDataHora(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "-";
   return fmtDataHora.format(d);
+}
+
+function documentosDoItem(
+  documentos: Documento[],
+  item: ChecklistItem,
+): Documento[] {
+  return documentos.filter((d) => d.checklist_item_id === item.id);
+}
+
+function documentosSemChecklist(documentos: Documento[]): Documento[] {
+  return documentos.filter((d) => !d.checklist_item_id);
+}
+
+function renderTabelaDocumentos({
+  documentos,
+  linksAssinados,
+  podeVerificar,
+  checklist,
+}: {
+  documentos: Documento[];
+  linksAssinados: Map<string, string>;
+  podeVerificar: boolean;
+  checklist: ChecklistItem[];
+}) {
+  if (documentos.length === 0) return null;
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Arquivo</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Quando</TableHead>
+          <TableHead>Revisao</TableHead>
+          {podeVerificar && (
+            <TableHead className="w-px text-right">Acoes</TableHead>
+          )}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {documentos.map((d) => {
+          const link = linksAssinados.get(d.id);
+          return (
+            <TableRow key={d.id}>
+              <TableCell>
+                {link ? (
+                  <a
+                    href={link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary underline underline-offset-2"
+                  >
+                    Ver documento
+                  </a>
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </TableCell>
+              <TableCell>
+                <Badge variant={variantStatusDoc(d.status)}>
+                  {rotuloStatusDoc(d.status)}
+                </Badge>
+                {!d.checklist_item_id && (
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    {rotuloTipoDoc(d.tipo_doc, checklist)}
+                  </p>
+                )}
+              </TableCell>
+              <TableCell className="text-muted-foreground tabular-nums text-xs">
+                {formatDataHora(d.criado_em)}
+              </TableCell>
+              <TableCell className="max-w-xs text-xs">
+                {d.motivo_reprovacao ? (
+                  <span className="text-destructive">
+                    {d.motivo_reprovacao}
+                  </span>
+                ) : d.revisado_em ? (
+                  <span className="text-muted-foreground">
+                    {formatDataHora(d.revisado_em)}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </TableCell>
+              {podeVerificar && (
+                <TableCell>
+                  <StatusDocumentoButtons documentoId={d.id} />
+                </TableCell>
+              )}
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  );
 }
 
 export default async function DocumentosPage({
@@ -84,36 +187,56 @@ export default async function DocumentosPage({
   const supabase = await createClient();
   const sessao = await getSessao();
 
-  const [negocioRes, documentosRes] = await Promise.all([
-    supabase
-      .from("negocios")
-      .select(
-        "id, tipo, tipo_garantia, prazo_meses, imoveis(logradouro, numero, bairro, cidade), papeis_negocio(papel, ativo, usuario_id)",
-      )
-      .eq("id", id)
-      .maybeSingle(),
-    supabase
-      .from("documentos")
-      .select("id, tipo_doc, arquivo_url, status, criado_em")
-      .eq("negocio_id", id)
-      .order("criado_em", { ascending: false }),
-  ]);
+  const { data: negocioData, error: negocioError } = await supabase
+    .from("negocios")
+    .select(
+      "id, tipo, tipo_garantia, prazo_meses, imoveis(logradouro, numero, bairro, cidade), papeis_negocio(papel, ativo, usuario_id)",
+    )
+    .eq("id", id)
+    .maybeSingle();
 
-  if (negocioRes.error) {
+  if (negocioError) {
     return (
       <p className="text-destructive text-sm">
-        Não foi possível carregar o negócio.
+        Nao foi possivel carregar o negocio.
       </p>
     );
   }
-  if (!negocioRes.data) notFound();
+  if (!negocioData) notFound();
 
-  const negocio = negocioRes.data as unknown as NegocioDoc;
+  const negocio = negocioData as unknown as NegocioDoc;
+  const tipoNegocio = negocio.tipo ?? "venda";
+  const [documentosRes, checklistRes] = await Promise.all([
+    supabase
+      .from("documentos")
+      .select(
+        "id, checklist_item_id, tipo_doc, perfil, arquivo_url, status, motivo_reprovacao, criado_em, revisado_em",
+      )
+      .eq("negocio_id", id)
+      .order("criado_em", { ascending: false }),
+    supabase
+      .from("documentos_checklist_itens")
+      .select(
+        "id, tipo_negocio, perfil, codigo, titulo, descricao, obrigatorio, etapa, ordem",
+      )
+      .eq("ativo", true)
+      .in("tipo_negocio", [tipoNegocio, "ambos"])
+      .order("perfil", { ascending: true })
+      .order("ordem", { ascending: true }),
+  ]);
+
+  if (documentosRes.error || checklistRes.error) {
+    return (
+      <p className="text-destructive text-sm">
+        Nao foi possivel carregar os documentos.
+      </p>
+    );
+  }
+
   const documentos = (documentosRes.data ?? []) as unknown as Documento[];
-  const ehLocacao = negocio.tipo === "locacao";
-  const checklist = checklistPara(negocio.tipo);
+  const checklist = (checklistRes.data ?? []) as unknown as ChecklistItem[];
+  const ehLocacao = tipoNegocio === "locacao";
 
-  // Quem pode verificar/reprovar: admin ou corretor (ativo) deste negócio.
   const ehCorretorDoNegocio = (negocio.papeis_negocio ?? []).some(
     (p) =>
       p.ativo &&
@@ -122,7 +245,6 @@ export default async function DocumentosPage({
   );
   const podeVerificar = Boolean(sessao?.isAdmin) || ehCorretorDoNegocio;
 
-  // Bucket é privado — gera signed URLs (1h) pra visualizar cada documento.
   const linksAssinados = new Map<string, string>();
   await Promise.all(
     documentos.map(async (d) => {
@@ -133,15 +255,8 @@ export default async function DocumentosPage({
     }),
   );
 
-  // Agrupa os documentos enviados por tipo (para mostrar no checklist).
-  const porTipo = new Map<string, Documento[]>();
-  for (const d of documentos) {
-    const arr = porTipo.get(d.tipo_doc) ?? [];
-    arr.push(d);
-    porTipo.set(d.tipo_doc, arr);
-  }
-
   const usuarioId = sessao?.user.id ?? "";
+  const outrosDocumentos = documentosSemChecklist(documentos);
 
   return (
     <div className="flex flex-col gap-6">
@@ -150,17 +265,18 @@ export default async function DocumentosPage({
         className={buttonVariants({ variant: "ghost", size: "sm" })}
       >
         <ArrowLeft className="size-4" />
-        Voltar ao negócio
+        Voltar ao negocio
       </Link>
 
       <Card>
         <CardHeader>
-          <CardDescription>Documentos · Due Diligence</CardDescription>
+          <CardDescription>Documentos - Due diligence</CardDescription>
           <CardTitle className="text-xl">
             {enderecoResumido(negocio.imoveis)}
           </CardTitle>
           <CardDescription>
-            {ehLocacao ? "Locação" : "Venda"} — documentos exigidos abaixo.
+            {ehLocacao ? "Locacao" : "Venda"} - checklist por comprador,
+            vendedor, imovel e contrato.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -169,151 +285,94 @@ export default async function DocumentosPage({
         <CardHeader>
           <CardTitle>Checklist de documentos</CardTitle>
           <CardDescription>
-            Envie cada documento. Admin/corretor verifica ou reprova.
+            Itens obrigatorios e opcionais ficam separados por perfil. Admin ou
+            corretor revisa documentos recebidos.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-6">
-          {checklist.map((item) => {
-            const enviados = porTipo.get(item.tipo) ?? [];
+        <CardContent className="flex flex-col gap-8">
+          {PERFIL_CHECKLIST_ORDEM.map((perfil) => {
+            const itens = checklist.filter((i) => i.perfil === perfil);
+            if (itens.length === 0) return null;
+
             return (
-              <div
-                key={item.tipo}
-                className="flex flex-col gap-3 rounded-xl ring-1 ring-foreground/10 p-4"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <FileText className="text-muted-foreground size-4" />
-                    <span className="font-medium">{item.label}</span>
-                    <Badge
-                      variant={enviados.length ? "outline" : "secondary"}
-                    >
-                      {enviados.length
-                        ? `${enviados.length} enviado(s)`
-                        : "Pendente"}
-                    </Badge>
-                  </div>
-                  <EnviarDocumentoItem
-                    negocioId={negocio.id}
-                    usuarioId={usuarioId}
-                    tipoDoc={item.tipo}
-                  />
+              <section key={perfil} className="flex flex-col gap-4">
+                <div>
+                  <h2 className="text-base font-semibold">
+                    {PERFIL_CHECKLIST_LABEL[perfil]}
+                  </h2>
+                  <p className="text-muted-foreground text-sm">
+                    {itens.length} item(ns) para este perfil.
+                  </p>
                 </div>
 
-                {enviados.length > 0 && (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Arquivo</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Quando</TableHead>
-                        {podeVerificar && (
-                          <TableHead className="w-px text-right">
-                            Ações
-                          </TableHead>
-                        )}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {enviados.map((d) => {
-                        const link = linksAssinados.get(d.id);
-                        return (
-                          <TableRow key={d.id}>
-                            <TableCell>
-                              {link ? (
-                                <a
-                                  href={link}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-primary underline underline-offset-2"
-                                >
-                                  Ver documento
-                                </a>
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={variantStatusDoc(d.status)}>
-                                {rotuloStatusDoc(d.status)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground tabular-nums text-xs">
-                              {formatDataHora(d.criado_em)}
-                            </TableCell>
-                            {podeVerificar && (
-                              <TableCell>
-                                <StatusDocumentoButtons documentoId={d.id} />
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        );
+                {itens.map((item) => {
+                  const enviados = documentosDoItem(documentos, item);
+                  const status = statusAgregado(enviados);
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex flex-col gap-3 rounded-lg p-4 ring-1 ring-foreground/10"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <FileText className="text-muted-foreground size-4" />
+                            <span className="font-medium">{item.titulo}</span>
+                            <Badge variant={variantStatusDoc(status)}>
+                              {rotuloStatusDoc(status)}
+                            </Badge>
+                            <Badge
+                              variant={item.obrigatorio ? "secondary" : "outline"}
+                            >
+                              {item.obrigatorio ? "Obrigatorio" : "Opcional"}
+                            </Badge>
+                          </div>
+                          {item.descricao && (
+                            <p className="text-muted-foreground mt-1 text-sm">
+                              {item.descricao}
+                            </p>
+                          )}
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            Etapa: {item.etapa}
+                          </p>
+                        </div>
+
+                        <EnviarDocumentoItem
+                          negocioId={negocio.id}
+                          usuarioId={usuarioId}
+                          checklistItemId={item.id}
+                        />
+                      </div>
+
+                      {renderTabelaDocumentos({
+                        documentos: enviados,
+                        linksAssinados,
+                        podeVerificar,
+                        checklist,
                       })}
-                    </TableBody>
-                  </Table>
-                )}
-              </div>
+                    </div>
+                  );
+                })}
+              </section>
             );
           })}
 
-          {/* Documentos de tipos fora do checklist (ex.: tipo de negócio mudou). */}
-          {documentos.filter(
-            (d) => !checklist.some((i) => i.tipo === d.tipo_doc),
-          ).length > 0 && (
-            <div className="flex flex-col gap-2 border-t pt-4">
-              <p className="text-muted-foreground text-sm">Outros documentos</p>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Arquivo</TableHead>
-                    <TableHead>Status</TableHead>
-                    {podeVerificar && (
-                      <TableHead className="w-px text-right">Ações</TableHead>
-                    )}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {documentos
-                    .filter(
-                      (d) => !checklist.some((i) => i.tipo === d.tipo_doc),
-                    )
-                    .map((d) => {
-                      const link = linksAssinados.get(d.id);
-                      return (
-                        <TableRow key={d.id}>
-                          <TableCell>
-                            {rotuloTipoDoc(d.tipo_doc, negocio.tipo)}
-                          </TableCell>
-                          <TableCell>
-                            {link ? (
-                              <a
-                                href={link}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-primary underline underline-offset-2"
-                              >
-                                Ver documento
-                              </a>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={variantStatusDoc(d.status)}>
-                              {rotuloStatusDoc(d.status)}
-                            </Badge>
-                          </TableCell>
-                          {podeVerificar && (
-                            <TableCell>
-                              <StatusDocumentoButtons documentoId={d.id} />
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      );
-                    })}
-                </TableBody>
-              </Table>
-            </div>
+          {outrosDocumentos.length > 0 && (
+            <section className="flex flex-col gap-3 border-t pt-4">
+              <div>
+                <h2 className="text-base font-semibold">Outros documentos</h2>
+                <p className="text-muted-foreground text-sm">
+                  Documentos antigos ou fora do checklist versionado.
+                </p>
+              </div>
+              {renderTabelaDocumentos({
+                documentos: outrosDocumentos,
+                linksAssinados,
+                podeVerificar,
+                checklist,
+              })}
+            </section>
           )}
         </CardContent>
       </Card>
@@ -321,13 +380,13 @@ export default async function DocumentosPage({
       {ehLocacao && (
         <Card>
           <CardHeader>
-            <CardTitle>Garantia de locação</CardTitle>
+            <CardTitle>Garantia de locacao</CardTitle>
             <CardDescription>
-              Garantia é seleção única. Atual:{" "}
+              Garantia e selecao unica. Atual:{" "}
               <span className="font-medium">
                 {rotuloGarantia(negocio.tipo_garantia)}
               </span>
-              {negocio.prazo_meses ? ` · ${negocio.prazo_meses} meses` : ""}
+              {negocio.prazo_meses ? ` - ${negocio.prazo_meses} meses` : ""}
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -7,12 +7,8 @@ import {
   type DocumentoState,
 } from "@/actions/documentos";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
-/**
- * Botões verificar/reprovar de um documento. Cada botão submete a mesma action
- * com um `status` diferente (via input escondido por botão). Só renderizado para
- * admin/corretor do negócio.
- */
 export function StatusDocumentoButtons({
   documentoId,
 }: {
@@ -24,9 +20,9 @@ export function StatusDocumentoButtons({
   );
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex items-center gap-2">
-        <form action={formAction}>
+    <div className="flex flex-col items-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
+        <form action={formAction} className="flex items-center">
           <input type="hidden" name="documento_id" value={documentoId} />
           <input type="hidden" name="status" value="verificado" />
           <Button type="submit" size="sm" disabled={pending}>
@@ -34,16 +30,27 @@ export function StatusDocumentoButtons({
             Verificar
           </Button>
         </form>
-        <form action={formAction}>
+
+        <form action={formAction} className="flex max-w-72 flex-col gap-2">
           <input type="hidden" name="documento_id" value={documentoId} />
           <input type="hidden" name="status" value="reprovado" />
+          <Textarea
+            name="motivo_reprovacao"
+            placeholder="Motivo da reprovacao"
+            className="min-h-12 text-xs"
+            disabled={pending}
+          />
           <Button type="submit" size="sm" variant="outline" disabled={pending}>
             <X className="size-4" />
             Reprovar
           </Button>
         </form>
       </div>
+
       {state.error && <p className="text-destructive text-xs">{state.error}</p>}
+      {state.message && (
+        <p className="text-muted-foreground text-xs">{state.message}</p>
+      )}
     </div>
   );
 }

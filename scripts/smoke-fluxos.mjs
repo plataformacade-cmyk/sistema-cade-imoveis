@@ -1,6 +1,6 @@
 // Smoke E2E ampliado da camada de dados contra o Supabase LOCAL.
-// Cobre: auth, trigger, vitrine (RLS), interesse (RPC), e os fluxos de
-// participante (mensagem/proposta/visita/documento/comissão/contrato) sob RLS.
+// Cobre: auth, trigger, vitrine, interesse, chat, proposta, visita,
+// documentos por checklist, comissao e contrato sob RLS.
 // Rodar: ANON=.. SROLE=.. node scripts/smoke-fluxos.mjs
 import { createClient } from "@supabase/supabase-js";
 
@@ -9,15 +9,12 @@ const admin = createClient(URL, process.env.SROLE, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-let ok = 0,
-  fail = 0;
-const check = (n, c, e = "") => {
-  console.log((c ? "PASS" : "FAIL") + ":", n, c ? "" : ":: " + e);
-  if (c) {
-    ok++;
-  } else {
-    fail++;
-  }
+let ok = 0;
+let fail = 0;
+const check = (nome, condicao, erro = "") => {
+  console.log((condicao ? "PASS" : "FAIL") + ":", nome, condicao ? "" : ":: " + erro);
+  if (condicao) ok++;
+  else fail++;
 };
 
 const senha = "senha-teste-123";
@@ -31,36 +28,50 @@ const mk = async (email, nome) =>
     })
   ).data?.user?.id;
 
-const propId = await mk("prop@teste.local", "Proprietário");
+const propId = await mk("prop@teste.local", "Proprietario");
 const compId = await mk("comp@teste.local", "Comprador");
-check("auth + trigger (2 usuários)", propId && compId);
+const corrId = await mk("corr@teste.local", "Corretor");
+const foraId = await mk("fora@teste.local", "Fora");
+check("auth + trigger (4 usuarios)", propId && compId && corrId && foraId);
 
 const { data: imovel } = await admin
   .from("imoveis")
   .insert({
     proprietario_id: propId,
     tipo: "apartamento",
-    cidade: "Uberlândia",
+    cidade: "Uberlandia",
     bairro: "Centro",
     valor_anuncio: 350000,
     status: "ativo",
   })
   .select("id")
   .single();
-check("imóvel ativo criado", !!imovel?.id);
+check("imovel ativo criado", !!imovel?.id);
 
 const anon = createClient(URL, process.env.ANON);
 const { data: vit } = await anon.from("imoveis").select("id").eq("status", "ativo");
-check("vitrine pública (anon)", (vit?.length ?? 0) >= 1, `rows=${vit?.length}`);
+check("vitrine publica (anon)", (vit?.length ?? 0) >= 1, `rows=${vit?.length}`);
 
 const comp = createClient(URL, process.env.ANON);
 await comp.auth.signInWithPassword({ email: "comp@teste.local", password: senha });
 const prop = createClient(URL, process.env.ANON);
 await prop.auth.signInWithPassword({ email: "prop@teste.local", password: senha });
+const corr = createClient(URL, process.env.ANON);
+await corr.auth.signInWithPassword({ email: "corr@teste.local", password: senha });
+const fora = createClient(URL, process.env.ANON);
+await fora.auth.signInWithPassword({ email: "fora@teste.local", password: senha });
+
 const { data: negId, error: eInt } = await comp.rpc("demonstrar_interesse", {
   p_imovel_id: imovel.id,
 });
 check("RPC interesse", !eInt && negId, eInt?.message);
+
+await admin.from("papeis_negocio").insert({
+  negocio_id: negId,
+  usuario_id: corrId,
+  papel: "corretor",
+  ativo: true,
+});
 
 const { data: negCriado } = await admin
   .from("negocios")
@@ -79,7 +90,6 @@ const { data: conv } = await admin
   .eq("negocio_id", negId)
   .single();
 
-// Fluxos de participante (comprador) sob RLS:
 const { error: eMsg } = await comp
   .from("mensagens")
   .insert({ conversa_id: conv.id, autor_id: compId, corpo: "Tenho interesse!" });
@@ -95,7 +105,7 @@ const { error: eProp } = await comp.from("propostas").insert({
   negocio_id: negId,
   autor_id: compId,
   valor: 340000,
-  condicoes: "À vista",
+  condicoes: "A vista",
   status: "enviada",
 });
 check("participante: enviar proposta", !eProp, eProp?.message);
@@ -198,14 +208,94 @@ check(
   eVisPerdida?.message ?? `status=${negPerdidoDepois?.status}`,
 );
 
-const { error: eDoc } = await comp.from("documentos").insert({
+const { data: checklistDoc, error: eChecklistDoc } = await comp
+  .from("documentos_checklist_itens")
+  .select("id, codigo")
+  .eq("tipo_negocio", "venda")
+  .eq("perfil", "comprador")
+  .eq("codigo", "comprador_rg_cpf")
+  .eq("ativo", true)
+  .single();
+check(
+  "checklist documentos: item venda comprador",
+  !eChecklistDoc && checklistDoc?.id,
+  eChecklistDoc?.message,
+);
+
+const { data: docCriado, error: eDoc } = await comp
+  .from("documentos")
+  .insert({
+    negocio_id: negId,
+    checklist_item_id: checklistDoc?.id,
+    tipo_doc: "sera_derivado",
+    arquivo_url: `${compId}/rg.pdf`,
+    enviado_por: compId,
+    status: "recebido",
+  })
+  .select("id, tipo_doc, perfil, status")
+  .single();
+check(
+  "participante: enviar documento por checklist",
+  !eDoc && docCriado?.tipo_doc === "comprador_rg_cpf" && docCriado?.perfil === "comprador",
+  eDoc?.message ?? JSON.stringify(docCriado),
+);
+
+const { data: docsComp, error: eDocLe } = await comp
+  .from("documentos")
+  .select("id")
+  .eq("negocio_id", negId);
+check("participante: ler documentos", !eDocLe && (docsComp?.length ?? 0) >= 1, eDocLe?.message);
+
+const { data: docsFora, error: eDocForaLe } = await fora
+  .from("documentos")
+  .select("id")
+  .eq("negocio_id", negId);
+check(
+  "usuario externo: nao le documentos",
+  !eDocForaLe && (docsFora?.length ?? 0) === 0,
+  eDocForaLe?.message ?? `rows=${docsFora?.length}`,
+);
+
+const { error: eDocForaIns } = await fora.from("documentos").insert({
   negocio_id: negId,
-  tipo_doc: "rg",
-  arquivo_url: `${compId}/rg.pdf`,
-  enviado_por: compId,
+  checklist_item_id: checklistDoc?.id,
+  tipo_doc: "comprador_rg_cpf",
+  arquivo_url: `${foraId}/rg.pdf`,
+  enviado_por: foraId,
   status: "recebido",
 });
-check("participante: enviar documento", !eDoc, eDoc?.message);
+check("usuario externo: nao envia documento", !!eDocForaIns, "insert externo nao bloqueado");
+
+const { error: eDocCompRev } = await comp
+  .from("documentos")
+  .update({ status: "verificado" })
+  .eq("id", docCriado?.id)
+  .select("id");
+const { data: docAposCompRev } = await admin
+  .from("documentos")
+  .select("status")
+  .eq("id", docCriado?.id)
+  .single();
+check(
+  "comprador: nao revisa documento",
+  (eDocCompRev || docAposCompRev?.status === "recebido"),
+  "comprador conseguiu revisar",
+);
+
+const { data: docRevisado, error: eDocCorrRev } = await corr
+  .from("documentos")
+  .update({
+    status: "reprovado",
+    motivo_reprovacao: "Documento ilegivel no smoke",
+  })
+  .eq("id", docCriado?.id)
+  .select("status, motivo_reprovacao, revisado_por")
+  .single();
+check(
+  "corretor: reprova documento com motivo",
+  !eDocCorrRev && docRevisado?.status === "reprovado" && docRevisado?.revisado_por === corrId,
+  eDocCorrRev?.message ?? JSON.stringify(docRevisado),
+);
 
 const { error: eCom } = await comp.from("comissoes").insert({
   negocio_id: negId,
@@ -214,7 +304,7 @@ const { error: eCom } = await comp.from("comissoes").insert({
   valor: 20400,
   pagador: "proprietario",
 });
-check("participante: registrar comissão", !eCom, eCom?.message);
+check("participante: registrar comissao", !eCom, eCom?.message);
 
 const { error: eCon } = await comp
   .from("contratos")

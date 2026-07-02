@@ -1,42 +1,41 @@
-// Rótulos e checklists da Due Diligence (documentos) + Garantia de locação.
-
 import type { StatusVariant } from "../../_lib";
 
-// Checklist de documentos exigidos por tipo de negócio.
-export const CHECKLIST_VENDA = [
-  { tipo: "matricula", label: "Matrícula do imóvel" },
-  { tipo: "certidoes", label: "Certidões (negativas)" },
-  { tipo: "iptu", label: "IPTU" },
-  { tipo: "rg_cpf", label: "RG / CPF" },
-  { tipo: "comprovante_renda", label: "Comprovante de renda" },
-] as const;
+export type PerfilChecklist =
+  | "comprador"
+  | "vendedor"
+  | "imovel"
+  | "contrato_minuta";
 
-export const CHECKLIST_LOCACAO = [
-  { tipo: "rg_cpf", label: "RG / CPF" },
-  {
-    tipo: "comprovante_renda_3m",
-    label: "Comprovante de renda (3 meses)",
-  },
-  { tipo: "spc_serasa", label: "Consulta SPC / Serasa" },
-] as const;
+export type ChecklistItem = {
+  id: string;
+  tipo_negocio: "venda" | "locacao" | "ambos";
+  perfil: PerfilChecklist;
+  codigo: string;
+  titulo: string;
+  descricao: string | null;
+  obrigatorio: boolean;
+  etapa: string;
+  ordem: number;
+};
 
-export type ItemChecklist = { tipo: string; label: string };
+export const PERFIL_CHECKLIST_LABEL: Record<PerfilChecklist, string> = {
+  comprador: "Comprador / locatario",
+  vendedor: "Vendedor / proprietario",
+  imovel: "Imovel",
+  contrato_minuta: "Contrato / minuta",
+};
 
-export function checklistPara(tipoNegocio: string | null): ItemChecklist[] {
-  return tipoNegocio === "locacao"
-    ? [...CHECKLIST_LOCACAO]
-    : [...CHECKLIST_VENDA];
+export const PERFIL_CHECKLIST_ORDEM: PerfilChecklist[] = [
+  "comprador",
+  "vendedor",
+  "imovel",
+  "contrato_minuta",
+];
+
+export function rotuloTipoDoc(tipo: string, itens: ChecklistItem[]): string {
+  return itens.find((i) => i.codigo === tipo)?.titulo ?? tipo;
 }
 
-export function rotuloTipoDoc(
-  tipo: string,
-  tipoNegocio: string | null,
-): string {
-  const lista = checklistPara(tipoNegocio);
-  return lista.find((i) => i.tipo === tipo)?.label ?? tipo;
-}
-
-// Status de um documento.
 export const DOC_STATUS_OPCOES = [
   { value: "pendente", label: "Pendente" },
   { value: "recebido", label: "Recebido" },
@@ -61,15 +60,21 @@ export function variantStatusDoc(status: string): StatusVariant {
   }
 }
 
-// Tipos de garantia de locação (seleção ÚNICA — é lei).
+export function statusAgregado(documentos: { status: string }[]): string {
+  if (documentos.some((d) => d.status === "verificado")) return "verificado";
+  if (documentos.some((d) => d.status === "reprovado")) return "reprovado";
+  if (documentos.some((d) => d.status === "recebido")) return "recebido";
+  return "pendente";
+}
+
 export const GARANTIA_OPCOES = [
   { value: "fiador", label: "Fiador" },
-  { value: "caucao", label: "Caução" },
-  { value: "seguro_fianca", label: "Seguro-fiança" },
-  { value: "titulo_capitalizacao", label: "Título de capitalização" },
+  { value: "caucao", label: "Caucao" },
+  { value: "seguro_fianca", label: "Seguro-fianca" },
+  { value: "titulo_capitalizacao", label: "Titulo de capitalizacao" },
 ] as const;
 
 export function rotuloGarantia(tipo: string | null): string {
-  if (!tipo) return "—";
+  if (!tipo) return "-";
   return GARANTIA_OPCOES.find((g) => g.value === tipo)?.label ?? tipo;
 }
