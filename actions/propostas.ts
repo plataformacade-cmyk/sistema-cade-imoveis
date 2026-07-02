@@ -186,6 +186,8 @@ function revalidarFluxoProposta(conversaId: string | null, negocioId: string) {
   if (conversaId) revalidatePath(`/painel/mensagens/${conversaId}`);
   revalidatePath("/painel/mensagens");
   revalidatePath(`/painel/negocios/${negocioId}`);
+  revalidatePath(`/painel/negocios/${negocioId}/documentos`);
+  revalidatePath(`/painel/negocios/${negocioId}/contrato`);
   revalidatePath("/painel/negocios");
   revalidatePath("/painel/notificacoes");
   revalidatePath("/painel", "layout");

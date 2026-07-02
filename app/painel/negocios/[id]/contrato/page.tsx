@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { getSessao } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ import { ComissaoForm } from "./_components/comissao-form";
 import { GerarContratoButton } from "./_components/gerar-contrato-button";
 import { MarcarAssinadoForm } from "./_components/marcar-assinado-form";
 import { ImprimirButton } from "./_components/imprimir-button";
+import { ServicoJuridicoCard } from "../../_components/servico-juridico-card";
 
 type ImovelEmbed = {
   logradouro: string | null;
@@ -28,6 +30,7 @@ type ImovelEmbed = {
 
 type NegocioContrato = {
   id: string;
+  imovel_id: string | null;
   tipo: string | null;
   status: string;
   valor_acordado: number | null;
@@ -95,13 +98,14 @@ export default async function ContratoPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const sessao = await getSessao();
   const supabase = await createClient();
 
   const [negocioRes, comissaoRes, contratoRes] = await Promise.all([
     supabase
       .from("negocios")
       .select(
-        "id, tipo, status, valor_acordado, escritura_publica, imoveis(logradouro, numero, bairro, cidade, valor_anuncio)",
+        "id, imovel_id, tipo, status, valor_acordado, escritura_publica, imoveis(logradouro, numero, bairro, cidade, valor_anuncio)",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -137,6 +141,41 @@ export default async function ContratoPage({
   const negocio = negocioRes.data as unknown as NegocioContrato;
   const comissao = (comissaoRes.data ?? null) as ComissaoLinha | null;
   const contrato = (contratoRes.data ?? null) as ContratoLinha | null;
+  const [{ data: papeisUsuario }, { data: servicos }] = await Promise.all([
+    supabase
+      .from("papeis_negocio")
+      .select("papel")
+      .eq("negocio_id", negocio.id)
+      .eq("usuario_id", sessao?.user.id ?? "")
+      .eq("ativo", true),
+    negocio.imovel_id
+      ? supabase
+          .from("servicos_juridicos_contratacoes")
+          .select(
+            "id, pacote, status, tipo_negocio, origem, criado_em, negocio_id",
+          )
+          .eq("imovel_id", negocio.imovel_id)
+          .in("status", ["contratado", "em_atendimento"])
+          .order("criado_em", { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  const servico =
+    servicos?.find((item) => item.negocio_id === negocio.id) ??
+    servicos?.[0] ??
+    null;
+  const papeis = (papeisUsuario ?? []).map((p) => String(p.papel));
+  const usuarioPodeOperar =
+    Boolean(sessao?.isAdmin) ||
+    papeis.some((papel) =>
+      ["proprietario", "corretor", "admin"].includes(papel),
+    );
+  const podeContratarServico =
+    usuarioPodeOperar &&
+    ["documentos", "contrato", "cartorial"].includes(negocio.status);
+  const podeAtualizarServico =
+    Boolean(sessao?.isAdmin) ||
+    papeis.some((papel) => ["corretor", "admin"].includes(papel));
+  const tipoNegocio = negocio.tipo === "locacao" ? "locacao" : "venda";
 
   const padroes = defaultsComissao(negocio.tipo);
   // Base de cálculo padrão = valor acordado (ou, na falta, o valor de anúncio).
@@ -183,6 +222,20 @@ export default async function ContratoPage({
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {(servico || podeContratarServico) && (
+        <div className="print:hidden">
+          <ServicoJuridicoCard
+            negocioId={negocio.id}
+            imovelId={negocio.imovel_id}
+            tipoNegocio={tipoNegocio}
+            origem="contrato"
+            servico={servico}
+            podeContratar={podeContratarServico}
+            podeAtualizarStatus={podeAtualizarServico}
+          />
+        </div>
       )}
 
       {/* Seção Comissão */}

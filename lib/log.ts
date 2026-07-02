@@ -31,6 +31,8 @@ export type Evento =
   | "vendedor_empresa_declarada"
   | "vendedor_empresa_vinculada"
   | "vendedor_empresa_desvinculada"
+  | "servico_juridico_contratado"
+  | "servico_juridico_status_mudado"
   | "contrato_gerado"
   | "contrato_assinado"
   | "comissao_registrada"

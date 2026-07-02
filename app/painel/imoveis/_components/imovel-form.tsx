@@ -14,6 +14,7 @@ import imageCompression from "browser-image-compression";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Card,
   CardContent,
@@ -21,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -29,6 +31,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  PACOTE_NAO_CONTRATAR,
+  PACOTE_SERVICO_JURIDICO_INFO,
+  type PacoteServicoJuridicoForm,
+  type TipoNegocioServicoJuridico,
+} from "@/lib/servicos-juridicos";
 
 export type ImovelEditavel = {
   id: string;
@@ -47,6 +55,9 @@ export type ImovelEditavel = {
   valor_anuncio: number | null;
   status: string;
   fotos: string[];
+  servico_juridico_pacote?: PacoteServicoJuridicoForm;
+  servico_juridico_tipo_negocio?: TipoNegocioServicoJuridico;
+  servico_juridico_observacoes?: string | null;
 };
 
 const TIPOS = [
@@ -90,6 +101,14 @@ export function ImovelForm({
   const [uf, setUf] = useState(imovel?.uf ?? "");
   const [tipo, setTipo] = useState(imovel?.tipo ?? "");
   const [status, setStatus] = useState(imovel?.status ?? "rascunho");
+  const [servicoPacote, setServicoPacote] =
+    useState<PacoteServicoJuridicoForm>(
+      imovel?.servico_juridico_pacote ?? PACOTE_NAO_CONTRATAR,
+    );
+  const [servicoTipo, setServicoTipo] =
+    useState<TipoNegocioServicoJuridico>(
+      imovel?.servico_juridico_tipo_negocio ?? "venda",
+    );
   const [buscandoCep, setBuscandoCep] = useState(false);
 
   // Fotos: URLs públicas já enviadas ao storage.
@@ -101,6 +120,7 @@ export function ImovelForm({
   useEffect(() => {
     if (state.ok) {
       toast.success(editando ? "Imóvel atualizado." : "Imóvel cadastrado.");
+      if (state.warning) toast.warning(state.warning);
       router.push("/painel/imoveis");
     } else if (state.error) {
       toast.error(state.error);
@@ -179,17 +199,35 @@ export function ImovelForm({
     setFotos((f) => f.filter((u) => u !== url));
   }
 
+  function selecionarServicoPacote(valor: string) {
+    const pacote = valor as PacoteServicoJuridicoForm;
+    setServicoPacote(pacote);
+    const tipoPadrao = PACOTE_SERVICO_JURIDICO_INFO[pacote]?.tipoPadrao;
+    if (tipoPadrao) setServicoTipo(tipoPadrao);
+  }
+
   return (
     <form action={formAction} className="flex flex-col gap-6">
       {editando && <input type="hidden" name="id" value={imovel!.id} />}
       {/* Fotos serializadas pra Server Action (são enviadas pelo client). */}
       <input type="hidden" name="fotos" value={JSON.stringify(fotos)} />
+      <input
+        type="hidden"
+        name="servico_juridico_pacote"
+        value={servicoPacote}
+      />
+      <input
+        type="hidden"
+        name="servico_juridico_tipo_negocio"
+        value={servicoTipo}
+      />
 
       <Tabs defaultValue="endereco">
         <TabsList>
           <TabsTrigger value="endereco">Endereço</TabsTrigger>
           <TabsTrigger value="caracteristicas">Características</TabsTrigger>
           <TabsTrigger value="valor">Valor &amp; Fotos</TabsTrigger>
+          <TabsTrigger value="juridico">Juridico</TabsTrigger>
         </TabsList>
 
         {/* ABA ENDEREÇO */}
@@ -425,6 +463,88 @@ export function ImovelForm({
                   </div>
                 )}
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="juridico">
+          <Card>
+            <CardHeader>
+              <CardTitle>Servicos juridicos Cade</CardTitle>
+              <CardDescription>
+                Contratacao formal interna. Valores, pagamento e atendimento
+                operacional serao alinhados fora do app nesta versao.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-5">
+              <RadioGroup
+                value={servicoPacote}
+                onValueChange={selecionarServicoPacote}
+                className="grid gap-3 md:grid-cols-2"
+              >
+                {Object.entries(PACOTE_SERVICO_JURIDICO_INFO).map(
+                  ([value, info]) => (
+                    <label
+                      key={value}
+                      className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors hover:border-primary/60"
+                    >
+                      <RadioGroupItem value={value} className="mt-1" />
+                      <span className="flex flex-col gap-1">
+                        <span className="font-medium">{info.label}</span>
+                        <span className="text-muted-foreground">
+                          {info.descricao}
+                        </span>
+                      </span>
+                    </label>
+                  ),
+                )}
+              </RadioGroup>
+
+              {servicoPacote !== PACOTE_NAO_CONTRATAR && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="servico-tipo-trigger">
+                      Tipo de operacao
+                    </Label>
+                    <Select
+                      name="servico_juridico_tipo_negocio_select"
+                      value={servicoTipo}
+                      onValueChange={(v) =>
+                        setServicoTipo(
+                          String(v ?? "venda") as TipoNegocioServicoJuridico,
+                        )
+                      }
+                      disabled={Boolean(
+                        PACOTE_SERVICO_JURIDICO_INFO[servicoPacote]
+                          ?.tipoPadrao,
+                      )}
+                    >
+                      <SelectTrigger
+                        id="servico-tipo-trigger"
+                        className="w-full"
+                      >
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="venda">Venda</SelectItem>
+                        <SelectItem value="locacao">Locacao</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-2 sm:col-span-2">
+                    <Label htmlFor="servico_juridico_observacoes">
+                      Observacoes
+                    </Label>
+                    <Textarea
+                      id="servico_juridico_observacoes"
+                      name="servico_juridico_observacoes"
+                      defaultValue={imovel?.servico_juridico_observacoes ?? ""}
+                      placeholder="Contexto para o time juridico, se houver."
+                    />
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

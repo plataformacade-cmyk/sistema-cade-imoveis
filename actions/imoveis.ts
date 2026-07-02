@@ -4,11 +4,21 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessao } from "@/lib/auth";
 import { criarDestinoAceiteTermos } from "@/lib/auth-redirect";
 import { registrarEvento } from "@/lib/log";
+import { PACOTE_NAO_CONTRATAR } from "@/lib/servicos-juridicos";
+import {
+  cancelarContratacaoServicoJuridicoImovel,
+  registrarContratacaoServicoJuridico,
+} from "@/lib/servicos-juridicos-server";
 import { usuarioTemTermosPendentes, type PerfilTermo } from "@/lib/termos";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-export type ImovelState = { error?: string; ok?: boolean; id?: string };
+export type ImovelState = {
+  error?: string;
+  ok?: boolean;
+  id?: string;
+  warning?: string;
+};
 
 const TIPOS = ["casa", "apartamento", "comercial", "terreno"] as const;
 const STATUSES = [
@@ -94,6 +104,42 @@ function perfilTermoAnunciante(papel: string): PerfilTermo {
   return papel === "corretor" ? "corretor" : "proprietario";
 }
 
+async function sincronizarServicoJuridicoImovel(params: {
+  sessao: NonNullable<Awaited<ReturnType<typeof getSessao>>>;
+  imovelId: string;
+  formData: FormData;
+  origem: "cadastro_imovel" | "edicao_imovel";
+}) {
+  const pacote = String(
+    params.formData.get("servico_juridico_pacote") ?? PACOTE_NAO_CONTRATAR,
+  );
+  const tipoNegocio = String(
+    params.formData.get("servico_juridico_tipo_negocio") ?? "venda",
+  );
+  const observacoes =
+    String(params.formData.get("servico_juridico_observacoes") ?? "").trim() ||
+    null;
+
+  if (pacote === PACOTE_NAO_CONTRATAR) {
+    if (params.origem === "edicao_imovel") {
+      return cancelarContratacaoServicoJuridicoImovel({
+        sessao: params.sessao,
+        imovelId: params.imovelId,
+      });
+    }
+    return { ok: true };
+  }
+
+  return registrarContratacaoServicoJuridico({
+    sessao: params.sessao,
+    pacote,
+    tipoNegocio,
+    origem: params.origem,
+    imovelId: params.imovelId,
+    observacoes,
+  });
+}
+
 export async function criarImovel(
   _prev: ImovelState,
   formData: FormData,
@@ -130,9 +176,22 @@ export async function criarImovel(
     payload: { tipo: r.dados.tipo, status: r.dados.status },
   });
 
+  const servico = await sincronizarServicoJuridicoImovel({
+    sessao,
+    imovelId: data.id,
+    formData,
+    origem: "cadastro_imovel",
+  });
+
   revalidatePath("/painel/imoveis");
   revalidatePath("/painel", "layout");
-  return { ok: true, id: data.id };
+  return {
+    ok: true,
+    id: data.id,
+    warning: servico.error
+      ? `Imovel salvo, mas o servico juridico nao foi registrado: ${servico.error}`
+      : undefined,
+  };
 }
 
 export async function editarImovel(
@@ -166,9 +225,22 @@ export async function editarImovel(
     payload: { tipo: r.dados.tipo, status: r.dados.status },
   });
 
+  const servico = await sincronizarServicoJuridicoImovel({
+    sessao,
+    imovelId: id,
+    formData,
+    origem: "edicao_imovel",
+  });
+
   revalidatePath("/painel/imoveis");
   revalidatePath(`/painel/imoveis/${id}`);
-  return { ok: true, id };
+  return {
+    ok: true,
+    id,
+    warning: servico.error
+      ? `Imovel salvo, mas o servico juridico nao foi atualizado: ${servico.error}`
+      : undefined,
+  };
 }
 
 export async function arquivarImovel(formData: FormData): Promise<void> {

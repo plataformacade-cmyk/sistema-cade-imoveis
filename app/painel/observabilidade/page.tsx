@@ -24,6 +24,8 @@ const EVENTOS = [
   "negocio_aberto",
   "negocio_status_mudado",
   "mensagem_contato_bloqueado",
+  "servico_juridico_contratado",
+  "servico_juridico_status_mudado",
   "papel_atribuido",
 ];
 

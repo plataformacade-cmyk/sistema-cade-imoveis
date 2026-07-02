@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, FileText, FileSignature } from "lucide-react";
+import { getSessao } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +31,7 @@ import { StatusSelect } from "../_components/status-select";
 import { AtribuirParticipanteForm } from "../_components/atribuir-participante-form";
 import { PropostasSection } from "../_components/propostas-section";
 import { AbrirConversaButton } from "../_components/abrir-conversa-button";
+import { ServicoJuridicoCard } from "../_components/servico-juridico-card";
 
 type ImovelEmbed = {
   logradouro: string | null;
@@ -40,6 +42,7 @@ type ImovelEmbed = {
 
 type ParticipanteEmbed = {
   id: string;
+  usuario_id: string;
   papel: string;
   ativo: boolean;
   criado_em: string | null;
@@ -48,6 +51,8 @@ type ParticipanteEmbed = {
 
 type NegocioDetalhe = {
   id: string;
+  imovel_id: string | null;
+  tipo: string | null;
   status: string;
   valor_acordado: number | null;
   criado_em: string | null;
@@ -61,13 +66,14 @@ export default async function NegocioDetalhePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const sessao = await getSessao();
   const supabase = await createClient();
 
   const [negocioRes, usuariosRes] = await Promise.all([
     supabase
       .from("negocios")
       .select(
-        "id, status, valor_acordado, criado_em, imoveis(logradouro, numero, bairro, cidade), papeis_negocio(id, papel, ativo, criado_em, usuarios(nome, email))",
+        "id, imovel_id, tipo, status, valor_acordado, criado_em, imoveis(logradouro, numero, bairro, cidade), papeis_negocio(id, usuario_id, papel, ativo, criado_em, usuarios(nome, email))",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -90,6 +96,33 @@ export default async function NegocioDetalhePage({
   const negocio = negocioRes.data as unknown as NegocioDetalhe;
   const usuarios = usuariosRes.data ?? [];
   const participantes = negocio.papeis_negocio ?? [];
+  const { data: servicos } = negocio.imovel_id
+    ? await supabase
+        .from("servicos_juridicos_contratacoes")
+        .select("id, pacote, status, tipo_negocio, origem, criado_em, negocio_id")
+        .eq("imovel_id", negocio.imovel_id)
+        .in("status", ["contratado", "em_atendimento"])
+        .order("criado_em", { ascending: false })
+    : { data: [] };
+  const servico =
+    servicos?.find((item) => item.negocio_id === negocio.id) ??
+    servicos?.[0] ??
+    null;
+  const papeisUsuario = participantes
+    .filter((p) => p.ativo && p.usuario_id === sessao?.user.id)
+    .map((p) => p.papel);
+  const usuarioPodeOperar =
+    Boolean(sessao?.isAdmin) ||
+    papeisUsuario.some((papel) =>
+      ["proprietario", "corretor", "admin"].includes(papel),
+    );
+  const podeContratarServico =
+    usuarioPodeOperar &&
+    ["documentos", "contrato", "cartorial"].includes(negocio.status);
+  const podeAtualizarServico =
+    Boolean(sessao?.isAdmin) ||
+    papeisUsuario.some((papel) => ["corretor", "admin"].includes(papel));
+  const tipoNegocio = negocio.tipo === "locacao" ? "locacao" : "venda";
 
   return (
     <div className="flex flex-col gap-6">
@@ -156,6 +189,18 @@ export default async function NegocioDetalhePage({
           </dl>
         </CardContent>
       </Card>
+
+      {(servico || podeContratarServico) && (
+        <ServicoJuridicoCard
+          negocioId={negocio.id}
+          imovelId={negocio.imovel_id}
+          tipoNegocio={tipoNegocio}
+          origem="proposta_aceita"
+          servico={servico}
+          podeContratar={podeContratarServico}
+          podeAtualizarStatus={podeAtualizarServico}
+        />
+      )}
 
       <Card>
         <CardHeader>

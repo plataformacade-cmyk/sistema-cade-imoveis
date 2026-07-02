@@ -1,6 +1,6 @@
 // Smoke E2E ampliado da camada de dados contra o Supabase LOCAL.
 // Cobre: auth, trigger, vitrine, interesse, chat, proposta, visita,
-// documentos por checklist, comissao e contrato sob RLS.
+// documentos por checklist, servicos juridicos, comissao e contrato sob RLS.
 // Rodar: ANON=.. SROLE=.. node scripts/smoke-fluxos.mjs
 import { createClient } from "@supabase/supabase-js";
 
@@ -446,6 +446,95 @@ check(
     docEmpresaVerificado?.status === "verificado" &&
     docEmpresaVerificado?.revisado_por === corrId,
   eDocEmpresaCorrRev?.message ?? JSON.stringify(docEmpresaVerificado),
+);
+
+const { data: servicoImovel, error: eServicoImovel } = await prop
+  .from("servicos_juridicos_contratacoes")
+  .insert({
+    imovel_id: imovel.id,
+    contratante_id: propId,
+    tipo_negocio: "venda",
+    pacote: "juridico_cartorial_venda",
+    origem: "cadastro_imovel",
+    aceito_por: propId,
+    termo_resumo: "Smoke de contratacao juridica no cadastro do imovel.",
+  })
+  .select("id, pacote, status")
+  .single();
+check(
+  "proprietario: contrata servico juridico no imovel",
+  !eServicoImovel &&
+    servicoImovel?.pacote === "juridico_cartorial_venda" &&
+    servicoImovel?.status === "contratado",
+  eServicoImovel?.message ?? JSON.stringify(servicoImovel),
+);
+
+const { data: servicoFora, error: eServicoForaLe } = await fora
+  .from("servicos_juridicos_contratacoes")
+  .select("id")
+  .eq("id", servicoImovel?.id);
+check(
+  "usuario externo: nao le servico juridico",
+  !eServicoForaLe && (servicoFora?.length ?? 0) === 0,
+  eServicoForaLe?.message ?? `rows=${servicoFora?.length}`,
+);
+
+const { error: eServicoForaIns } = await fora
+  .from("servicos_juridicos_contratacoes")
+  .insert({
+    negocio_id: negId,
+    imovel_id: imovel.id,
+    contratante_id: foraId,
+    tipo_negocio: "venda",
+    pacote: "analise_documental",
+    origem: "proposta_aceita",
+    aceito_por: foraId,
+    termo_resumo: "Tentativa externa.",
+  });
+check(
+  "usuario externo: nao contrata servico juridico",
+  !!eServicoForaIns,
+  "insert externo nao bloqueado",
+);
+
+await prop
+  .from("servicos_juridicos_contratacoes")
+  .update({ status: "cancelado" })
+  .eq("id", servicoImovel?.id);
+await admin.from("negocios").update({ status: "documentos" }).eq("id", negId);
+
+const { data: servicoNegocio, error: eServicoNegocio } = await prop
+  .from("servicos_juridicos_contratacoes")
+  .insert({
+    negocio_id: negId,
+    imovel_id: imovel.id,
+    contratante_id: propId,
+    tipo_negocio: "venda",
+    pacote: "contrato_compra_venda",
+    origem: "proposta_aceita",
+    aceito_por: propId,
+    termo_resumo: "Smoke de contratacao juridica pos-proposta.",
+  })
+  .select("id, negocio_id, tipo_negocio, pacote, status")
+  .single();
+check(
+  "proprietario: contrata servico juridico no negocio",
+  !eServicoNegocio &&
+    servicoNegocio?.negocio_id === negId &&
+    servicoNegocio?.pacote === "contrato_compra_venda",
+  eServicoNegocio?.message ?? JSON.stringify(servicoNegocio),
+);
+
+const { data: servicoAtualizado, error: eServicoStatus } = await corr
+  .from("servicos_juridicos_contratacoes")
+  .update({ status: "em_atendimento" })
+  .eq("id", servicoNegocio?.id)
+  .select("status")
+  .single();
+check(
+  "corretor: atualiza status do servico juridico",
+  !eServicoStatus && servicoAtualizado?.status === "em_atendimento",
+  eServicoStatus?.message ?? JSON.stringify(servicoAtualizado),
 );
 
 const { error: eCom } = await comp.from("comissoes").insert({

@@ -21,6 +21,7 @@ import {
 import { getSessao } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { enderecoResumido } from "../../_lib";
+import { ServicoJuridicoCard } from "../../_components/servico-juridico-card";
 import { EnviarDocumentoItem } from "./_components/enviar-documento-item";
 import {
   CadastrarEmpresaVendedorForm,
@@ -68,7 +69,9 @@ type ParticipanteEmbed = {
 
 type NegocioDoc = {
   id: string;
+  imovel_id: string | null;
   tipo: string | null;
+  status: string;
   tipo_garantia: string | null;
   prazo_meses: number | null;
   imoveis: {
@@ -242,7 +245,7 @@ export default async function DocumentosPage({
   const { data: negocioData, error: negocioError } = await supabase
     .from("negocios")
     .select(
-      "id, tipo, tipo_garantia, prazo_meses, imoveis(logradouro, numero, bairro, cidade), papeis_negocio(papel, ativo, usuario_id, usuarios(nome, email))",
+      "id, imovel_id, tipo, status, tipo_garantia, prazo_meses, imoveis(logradouro, numero, bairro, cidade), papeis_negocio(papel, ativo, usuario_id, usuarios(nome, email))",
     )
     .eq("id", id)
     .maybeSingle();
@@ -257,8 +260,14 @@ export default async function DocumentosPage({
   if (!negocioData) notFound();
 
   const negocio = negocioData as unknown as NegocioDoc;
-  const tipoNegocio = negocio.tipo ?? "venda";
-  const [documentosRes, checklistRes, declaracoesRes, empresasRes] =
+  const tipoNegocio = negocio.tipo === "locacao" ? "locacao" : "venda";
+  const [
+    documentosRes,
+    checklistRes,
+    declaracoesRes,
+    empresasRes,
+    servicosRes,
+  ] =
     await Promise.all([
       supabase
         .from("documentos")
@@ -287,13 +296,24 @@ export default async function DocumentosPage({
         )
         .eq("negocio_id", id)
         .eq("ativo", true),
+      negocio.imovel_id
+        ? supabase
+            .from("servicos_juridicos_contratacoes")
+            .select(
+              "id, pacote, status, tipo_negocio, origem, criado_em, negocio_id",
+            )
+            .eq("imovel_id", negocio.imovel_id)
+            .in("status", ["contratado", "em_atendimento"])
+            .order("criado_em", { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
     ]);
 
   if (
     documentosRes.error ||
     checklistRes.error ||
     declaracoesRes.error ||
-    empresasRes.error
+    empresasRes.error ||
+    servicosRes.error
   ) {
     return (
       <p className="text-destructive text-sm">
@@ -307,8 +327,16 @@ export default async function DocumentosPage({
   const declaracoes = (declaracoesRes.data ??
     []) as unknown as DeclaracaoEmpresa[];
   const vinculosEmpresa = (empresasRes.data ?? []) as unknown as VinculoEmpresa[];
+  const servicos = servicosRes.data ?? [];
+  const servico =
+    servicos.find((item) => item.negocio_id === negocio.id) ??
+    servicos[0] ??
+    null;
   const ehLocacao = tipoNegocio === "locacao";
 
+  const papeisUsuarioAtivos = (negocio.papeis_negocio ?? []).filter(
+    (p) => p.ativo && p.usuario_id === sessao?.user.id,
+  );
   const ehCorretorDoNegocio = (negocio.papeis_negocio ?? []).some(
     (p) =>
       p.ativo &&
@@ -316,6 +344,17 @@ export default async function DocumentosPage({
       p.usuario_id === sessao?.user.id,
   );
   const podeVerificar = Boolean(sessao?.isAdmin) || ehCorretorDoNegocio;
+  const usuarioPodeOperar =
+    Boolean(sessao?.isAdmin) ||
+    papeisUsuarioAtivos.some((p) =>
+      ["proprietario", "corretor", "admin"].includes(p.papel),
+    );
+  const podeContratarServico =
+    usuarioPodeOperar &&
+    ["documentos", "contrato", "cartorial"].includes(negocio.status);
+  const podeAtualizarServico =
+    Boolean(sessao?.isAdmin) ||
+    papeisUsuarioAtivos.some((p) => ["corretor", "admin"].includes(p.papel));
 
   const linksAssinados = new Map<string, string>();
   await Promise.all(
@@ -365,6 +404,18 @@ export default async function DocumentosPage({
           </CardDescription>
         </CardHeader>
       </Card>
+
+      {(servico || podeContratarServico) && (
+        <ServicoJuridicoCard
+          negocioId={negocio.id}
+          imovelId={negocio.imovel_id}
+          tipoNegocio={tipoNegocio}
+          origem="documentos"
+          servico={servico}
+          podeContratar={podeContratarServico}
+          podeAtualizarStatus={podeAtualizarServico}
+        />
+      )}
 
       <Card>
         <CardHeader>
