@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getSessao } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -74,6 +75,7 @@ function formatDataHora(iso: string | null): string {
  * uma nova proposta ou uma contraproposta.
  */
 export async function PropostasSection({ negocioId }: { negocioId: string }) {
+  const sessao = await getSessao();
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -120,6 +122,8 @@ export async function PropostasSection({ negocioId }: { negocioId: string }) {
                 {propostas.map((p) => {
                   const pendente =
                     p.status === "enviada" || p.status === "contraproposta";
+                  const podeResponder =
+                    Boolean(sessao) && pendente && p.autor_id !== sessao?.user.id;
                   return (
                     <TableRow key={p.id}>
                       <TableCell>
@@ -140,7 +144,7 @@ export async function PropostasSection({ negocioId }: { negocioId: string }) {
                         {formatDataHora(p.criado_em)}
                       </TableCell>
                       <TableCell>
-                        {pendente ? (
+                        {podeResponder ? (
                           <div className="flex justify-end">
                             <ResponderPropostaForm propostaId={p.id} />
                           </div>

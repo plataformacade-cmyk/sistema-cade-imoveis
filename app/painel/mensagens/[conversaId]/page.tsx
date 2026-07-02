@@ -9,6 +9,8 @@ import { formatHora, formatDataHora } from "../_lib";
 import { EnviarMensagemForm } from "../_components/enviar-mensagem-form";
 import { SugerirVisitaForm } from "../_components/sugerir-visita-form";
 import { VisitaChatCard } from "../_components/visita-chat-card";
+import { EnviarPropostaChatForm } from "../_components/enviar-proposta-chat-form";
+import { PropostaChatCard } from "../_components/proposta-chat-card";
 
 type ConversaDetalhe = {
   id: string;
@@ -16,6 +18,7 @@ type ConversaDetalhe = {
   criado_em: string | null;
   negocios: {
     id: string;
+    status: string;
     imoveis: {
       logradouro: string | null;
       numero: string | null;
@@ -43,6 +46,15 @@ type VisitaLinha = {
   observacoes: string | null;
 };
 
+type PropostaLinha = {
+  id: string;
+  autor_id: string;
+  valor: number | null;
+  condicoes: string | null;
+  status: string;
+  usuarios: { nome: string | null; email: string | null } | null;
+};
+
 type VisitaMetadata = {
   visita_id?: string;
   data_hora?: string;
@@ -64,6 +76,37 @@ function lerVisitaMetadata(valor: unknown): VisitaMetadata {
       typeof metadata.observacoes === "string" ? metadata.observacoes : null,
     status: typeof metadata.status === "string" ? metadata.status : undefined,
   };
+}
+
+type PropostaMetadata = {
+  proposta_id?: string;
+  valor?: number | null;
+  condicoes?: string | null;
+  status?: string;
+};
+
+function lerPropostaMetadata(valor: unknown): PropostaMetadata {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return {};
+  const metadata = valor as Record<string, unknown>;
+  const valorProposta =
+    typeof metadata.valor === "number" ? metadata.valor : null;
+  return {
+    proposta_id:
+      typeof metadata.proposta_id === "string"
+        ? metadata.proposta_id
+        : undefined,
+    valor: valorProposta,
+    condicoes:
+      typeof metadata.condicoes === "string" ? metadata.condicoes : null,
+    status: typeof metadata.status === "string" ? metadata.status : undefined,
+  };
+}
+
+function statusPropostaPorTipo(tipo: string, fallback?: string) {
+  if (tipo === "proposta_aceita") return "aceita";
+  if (tipo === "proposta_recusada") return "recusada";
+  if (tipo === "contraproposta_enviada") return "contraproposta";
+  return fallback ?? "enviada";
 }
 
 export default async function ThreadPage({
@@ -88,7 +131,7 @@ export default async function ThreadPage({
     supabase
       .from("conversas")
       .select(
-        "id, negocio_id, criado_em, negocios(id, imoveis(logradouro, numero, bairro, cidade))",
+        "id, negocio_id, criado_em, negocios(id, status, imoveis(logradouro, numero, bairro, cidade))",
       )
       .eq("id", conversaId)
       .maybeSingle(),
@@ -114,7 +157,7 @@ export default async function ThreadPage({
   const mensagens = (mensagensRes.data ?? []) as unknown as MensagemLinha[];
   const titulo = enderecoResumido(conversa.negocios?.imoveis ?? null);
 
-  const [papeisRes, visitasRes] = await Promise.all([
+  const [papeisRes, visitasRes, propostasRes] = await Promise.all([
     supabase
       .from("papeis_negocio")
       .select("papel")
@@ -125,11 +168,16 @@ export default async function ThreadPage({
       .from("visitas")
       .select("id, status, data_hora, canal, observacoes")
       .eq("negocio_id", conversa.negocio_id),
+    supabase
+      .from("propostas")
+      .select("id, autor_id, valor, condicoes, status, usuarios(nome, email)")
+      .eq("negocio_id", conversa.negocio_id),
   ]);
 
   const papeisUsuario = (papeisRes.data ?? []).map((papel) =>
     String(papel.papel),
   );
+  const statusNegocio = conversa.negocios?.status ?? "";
   const podeSugerirVisita =
     sessao.isAdmin ||
     papeisUsuario.some((papel) =>
@@ -137,11 +185,19 @@ export default async function ThreadPage({
     );
   const podeResponderVisita =
     sessao.isAdmin || papeisUsuario.includes("comprador");
+  const podeEnviarProposta =
+    (sessao.isAdmin || papeisUsuario.length > 0) &&
+    !["concluido", "perdido"].includes(statusNegocio);
   const visitasPorId = new Map(
     ((visitasRes.data ?? []) as VisitaLinha[]).map((visita) => [
       visita.id,
       visita,
     ]),
+  );
+  const propostasPorId = new Map(
+    ((propostasRes.data ?? []) as unknown as PropostaLinha[]).map(
+      (proposta) => [proposta.id, proposta],
+    ),
   );
 
   return (
@@ -180,10 +236,26 @@ export default async function ThreadPage({
               mensagem.usuarios?.email ||
               (meu ? "Voce" : "-");
             const mensagemDeVisita = mensagem.tipo?.startsWith("visita_");
+            const mensagemDeProposta =
+              mensagem.tipo?.startsWith("proposta_") ||
+              mensagem.tipo === "contraproposta_enviada";
             const metadata = lerVisitaMetadata(mensagem.metadata);
             const visita = metadata.visita_id
               ? visitasPorId.get(metadata.visita_id)
               : null;
+            const propostaMetadata = lerPropostaMetadata(mensagem.metadata);
+            const proposta = propostaMetadata.proposta_id
+              ? propostasPorId.get(propostaMetadata.proposta_id)
+              : null;
+            const autorProposta =
+              proposta?.usuarios?.nome ||
+              proposta?.usuarios?.email ||
+              autor;
+            const podeResponderProposta =
+              proposta != null &&
+              podeEnviarProposta &&
+              proposta.autor_id !== sessao.user.id &&
+              ["enviada", "contraproposta"].includes(proposta.status);
 
             return (
               <div
@@ -207,6 +279,22 @@ export default async function ThreadPage({
                       "aguardando_confirmacao"
                     }
                     podeResponder={podeResponderVisita}
+                  />
+                ) : mensagemDeProposta && propostaMetadata.proposta_id ? (
+                  <PropostaChatCard
+                    conversaId={conversa.id}
+                    negocioId={conversa.negocio_id}
+                    propostaId={propostaMetadata.proposta_id}
+                    autorNome={autorProposta}
+                    valor={proposta?.valor ?? propostaMetadata.valor ?? null}
+                    condicoes={
+                      proposta?.condicoes ?? propostaMetadata.condicoes ?? null
+                    }
+                    status={statusPropostaPorTipo(
+                      mensagem.tipo,
+                      proposta?.status ?? propostaMetadata.status,
+                    )}
+                    podeResponder={podeResponderProposta}
                   />
                 ) : (
                   <div
@@ -238,6 +326,15 @@ export default async function ThreadPage({
           <div className="mb-4 flex flex-col gap-2">
             <p className="text-sm font-medium">Sugerir visita</p>
             <SugerirVisitaForm conversaId={conversa.id} />
+          </div>
+        )}
+        {podeEnviarProposta && (
+          <div className="mb-4 flex flex-col gap-2">
+            <p className="text-sm font-medium">Enviar proposta</p>
+            <EnviarPropostaChatForm
+              negocioId={conversa.negocio_id}
+              conversaId={conversa.id}
+            />
           </div>
         )}
         <EnviarMensagemForm conversaId={conversa.id} />
