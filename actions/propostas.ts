@@ -3,6 +3,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSessao } from "@/lib/auth";
 import { registrarEvento } from "@/lib/log";
+import {
+  AVISO_CONTATO_EXTERNO,
+  detectarContatoExterno,
+} from "@/lib/chat/contato";
+import { registrarTentativaContato } from "@/lib/chat/tentativas-contato";
 import { revalidatePath } from "next/cache";
 
 export type PropostaState = { error?: string; message?: string };
@@ -158,6 +163,20 @@ async function garantirConversaNegocio(negocioId: string) {
   return criada.id as string;
 }
 
+async function buscarConversaNegocio(negocioId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("conversas")
+    .select("id")
+    .eq("negocio_id", negocioId)
+    .order("criado_em", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data.id as string;
+}
+
 function revalidarFluxoProposta(conversaId: string | null, negocioId: string) {
   if (conversaId) revalidatePath(`/painel/mensagens/${conversaId}`);
   revalidatePath("/painel/mensagens");
@@ -200,6 +219,25 @@ async function criarProposta(
   if (!contexto) return { error: "Negocio nao encontrado." };
   if (!negocioAbertoParaProposta(contexto))
     return { error: "Nao e possivel propor em negocio encerrado." };
+
+  if (condicoes) {
+    const contato = detectarContatoExterno(condicoes);
+    if (contato.bloqueado) {
+      const conversaId = await buscarConversaNegocio(negocioId);
+      await registrarTentativaContato({
+        conversaId,
+        negocioId,
+        usuarioId: sessao.user.id,
+        entidadeTipo: "proposta",
+        motivos: contato.motivos,
+        textoMascarado: contato.textoMascarado,
+      });
+
+      revalidarFluxoProposta(conversaId, negocioId);
+      revalidatePath("/painel/observabilidade");
+      return { error: AVISO_CONTATO_EXTERNO };
+    }
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase

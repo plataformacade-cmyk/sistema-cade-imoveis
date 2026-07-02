@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 import { SendHorizontal } from "lucide-react";
 import { enviarMensagem, type MensagemState } from "@/actions/mensagens";
+import { AVISO_CONTATO_EXTERNO } from "@/lib/chat/contato";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -38,6 +39,9 @@ export function EnviarMensagemForm({ conversaId }: { conversaId: string }) {
           {pending ? "Enviando..." : "Enviar"}
         </Button>
       </div>
+      <p className="text-muted-foreground text-xs">
+        {AVISO_CONTATO_EXTERNO}
+      </p>
       {state.error && <p className="text-destructive text-sm">{state.error}</p>}
     </form>
   );

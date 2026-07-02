@@ -23,6 +23,7 @@ export type Evento =
   | "corretor_cadastrado"
   | "interesse_demonstrado"
   | "mensagem_enviada"
+  | "mensagem_contato_bloqueado"
   | "proposta_enviada"
   | "proposta_respondida"
   | "documento_enviado"

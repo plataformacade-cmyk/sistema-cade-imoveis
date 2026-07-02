@@ -3,13 +3,18 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSessao } from "@/lib/auth";
 import { registrarEvento } from "@/lib/log";
+import {
+  AVISO_CONTATO_EXTERNO,
+  detectarContatoExterno,
+} from "@/lib/chat/contato";
+import { registrarTentativaContato } from "@/lib/chat/tentativas-contato";
 import { revalidatePath } from "next/cache";
 
 export type MensagemState = { error?: string; message?: string };
 
 /**
- * Garante que existe uma conversa para o negócio e devolve o id dela.
- * Se já houver uma, reaproveita; senão cria. Retorna null em caso de erro.
+ * Garante que existe uma conversa para o negocio e devolve o id dela.
+ * Se ja houver uma, reaproveita; senao cria. Retorna null em caso de erro.
  */
 export async function garantirConversa(
   negocio_id: string,
@@ -40,7 +45,7 @@ export async function garantirConversa(
 }
 
 /**
- * Envia uma mensagem numa conversa. autor_id = usuário logado.
+ * Envia uma mensagem numa conversa. autor_id = usuario logado.
  * Insere em `mensagens` e loga mensagem_enviada.
  */
 export async function enviarMensagem(
@@ -48,15 +53,42 @@ export async function enviarMensagem(
   formData: FormData,
 ): Promise<MensagemState> {
   const sessao = await getSessao();
-  if (!sessao) return { error: "Sessão expirada. Entre novamente." };
+  if (!sessao) return { error: "Sessao expirada. Entre novamente." };
 
   const conversa_id = String(formData.get("conversa_id") ?? "");
   const corpo = String(formData.get("corpo") ?? "").trim();
 
-  if (!conversa_id) return { error: "Conversa não identificada." };
+  if (!conversa_id) return { error: "Conversa nao identificada." };
   if (!corpo) return { error: "Escreva uma mensagem." };
 
   const supabase = await createClient();
+  const { data: conversa, error: conversaErro } = await supabase
+    .from("conversas")
+    .select("id, negocio_id")
+    .eq("id", conversa_id)
+    .maybeSingle();
+
+  if (conversaErro || !conversa?.negocio_id)
+    return { error: "Conversa nao encontrada." };
+
+  const contato = detectarContatoExterno(corpo);
+  if (contato.bloqueado) {
+    await registrarTentativaContato({
+      conversaId: conversa_id,
+      negocioId: conversa.negocio_id,
+      usuarioId: sessao.user.id,
+      entidadeTipo: "mensagem",
+      motivos: contato.motivos,
+      textoMascarado: contato.textoMascarado,
+    });
+
+    revalidatePath(`/painel/mensagens/${conversa_id}`);
+    revalidatePath("/painel/mensagens");
+    revalidatePath("/painel/observabilidade");
+    revalidatePath("/painel", "layout");
+    return { error: AVISO_CONTATO_EXTERNO };
+  }
+
   const { error } = await supabase.from("mensagens").insert({
     conversa_id,
     autor_id: sessao.user.id,
@@ -64,7 +96,7 @@ export async function enviarMensagem(
   });
 
   if (error)
-    return { error: "Não foi possível enviar a mensagem. Tente novamente." };
+    return { error: "Nao foi possivel enviar a mensagem. Tente novamente." };
 
   await registrarEvento("mensagem_enviada", {
     entidadeId: conversa_id,

@@ -23,6 +23,7 @@ const EVENTOS = [
   "imovel_arquivado",
   "negocio_aberto",
   "negocio_status_mudado",
+  "mensagem_contato_bloqueado",
   "papel_atribuido",
 ];
 

@@ -3,6 +3,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSessao } from "@/lib/auth";
 import { registrarEvento } from "@/lib/log";
+import {
+  AVISO_CONTATO_EXTERNO,
+  detectarContatoExterno,
+} from "@/lib/chat/contato";
+import { registrarTentativaContato } from "@/lib/chat/tentativas-contato";
 import { revalidatePath } from "next/cache";
 
 export type VisitaState = { error?: string; message?: string };
@@ -232,6 +237,24 @@ export async function sugerirVisitaNoChat(
     return { error: "Apenas anunciante ou corretor pode sugerir visita." };
   if (["concluido", "perdido"].includes(contexto.negocioStatus))
     return { error: "Nao e possivel agendar visita em negocio encerrado." };
+
+  if (observacoes) {
+    const contato = detectarContatoExterno(observacoes);
+    if (contato.bloqueado) {
+      await registrarTentativaContato({
+        conversaId,
+        negocioId: contexto.negocioId,
+        usuarioId: sessao.user.id,
+        entidadeTipo: "visita",
+        motivos: contato.motivos,
+        textoMascarado: contato.textoMascarado,
+      });
+
+      revalidarFluxoVisita(conversaId, contexto.negocioId);
+      revalidatePath("/painel/observabilidade");
+      return { error: AVISO_CONTATO_EXTERNO };
+    }
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase
