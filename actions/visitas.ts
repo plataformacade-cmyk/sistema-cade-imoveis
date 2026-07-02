@@ -17,6 +17,33 @@ const STATUS_VALIDOS = [
   "nao_compareceu",
 ];
 const CANAIS_VALIDOS = ["presencial", "video"];
+const PAPEIS_ANUNCIANTE = ["proprietario", "corretor", "admin"];
+
+type ContextoConversa = {
+  conversaId: string;
+  negocioId: string;
+  imovelId: string;
+  negocioStatus: string;
+  papeisUsuario: string[];
+};
+
+type VisitaChat = {
+  id: string;
+  negocio_id: string | null;
+  imovel_id: string;
+  data_hora: string;
+  canal: string;
+  observacoes: string | null;
+  status: string;
+};
+
+const fmtVisita = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
 
 /** Converte o valor de um input datetime-local em ISO ou null. */
 function lerDataHora(v: FormDataEntryValue | null): string | null {
@@ -25,6 +52,105 @@ function lerDataHora(v: FormDataEntryValue | null): string | null {
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return null;
   return d.toISOString();
+}
+
+function formatarDataHora(dataHora: string): string {
+  const d = new Date(dataHora);
+  if (Number.isNaN(d.getTime())) return dataHora;
+  return fmtVisita.format(d);
+}
+
+async function carregarContextoConversa(
+  conversaId: string,
+  usuarioId: string,
+): Promise<ContextoConversa | null> {
+  const supabase = await createClient();
+
+  const { data: conversa, error: conversaErro } = await supabase
+    .from("conversas")
+    .select("id, negocio_id")
+    .eq("id", conversaId)
+    .maybeSingle();
+
+  if (conversaErro || !conversa?.negocio_id) return null;
+
+  const [{ data: negocio, error: negocioErro }, { data: papeis }] =
+    await Promise.all([
+      supabase
+        .from("negocios")
+        .select("id, imovel_id, status")
+        .eq("id", conversa.negocio_id)
+        .maybeSingle(),
+      supabase
+        .from("papeis_negocio")
+        .select("papel")
+        .eq("negocio_id", conversa.negocio_id)
+        .eq("usuario_id", usuarioId)
+        .eq("ativo", true),
+    ]);
+
+  if (negocioErro || !negocio?.imovel_id) return null;
+
+  return {
+    conversaId: conversa.id,
+    negocioId: conversa.negocio_id,
+    imovelId: negocio.imovel_id,
+    negocioStatus: negocio.status,
+    papeisUsuario: (papeis ?? []).map((papel) => String(papel.papel)),
+  };
+}
+
+function usuarioPodeSugerirVisita(
+  sessao: NonNullable<Awaited<ReturnType<typeof getSessao>>>,
+  contexto: ContextoConversa,
+) {
+  return (
+    sessao.isAdmin ||
+    contexto.papeisUsuario.some((papel) => PAPEIS_ANUNCIANTE.includes(papel))
+  );
+}
+
+function usuarioPodeResponderVisita(
+  sessao: NonNullable<Awaited<ReturnType<typeof getSessao>>>,
+  contexto: ContextoConversa,
+) {
+  return sessao.isAdmin || contexto.papeisUsuario.includes("comprador");
+}
+
+async function inserirMensagemVisita(params: {
+  conversaId: string;
+  autorId: string;
+  tipo: "visita_sugerida" | "visita_confirmada" | "visita_recusada";
+  corpo: string;
+  visita: VisitaChat;
+}): Promise<boolean> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("mensagens").insert({
+    conversa_id: params.conversaId,
+    autor_id: params.autorId,
+    corpo: params.corpo,
+    tipo: params.tipo,
+    metadata: {
+      visita_id: params.visita.id,
+      negocio_id: params.visita.negocio_id,
+      imovel_id: params.visita.imovel_id,
+      data_hora: params.visita.data_hora,
+      canal: params.visita.canal,
+      observacoes: params.visita.observacoes,
+      status: params.visita.status,
+    },
+  });
+
+  return !error;
+}
+
+function revalidarFluxoVisita(conversaId: string, negocioId: string) {
+  revalidatePath(`/painel/mensagens/${conversaId}`);
+  revalidatePath("/painel/mensagens");
+  revalidatePath("/painel/visitas");
+  revalidatePath(`/painel/negocios/${negocioId}`);
+  revalidatePath("/painel/notificacoes");
+  revalidatePath("/painel", "layout");
 }
 
 /**
@@ -74,6 +200,167 @@ export async function agendarVisita(
 
   revalidatePath("/painel/visitas");
   return { message: "Visita agendada." };
+}
+
+export async function sugerirVisitaNoChat(
+  _prev: VisitaState,
+  formData: FormData,
+): Promise<VisitaState> {
+  const sessao = await getSessao();
+  if (!sessao) return { error: "Sessao expirada. Entre novamente." };
+
+  const conversaId = String(formData.get("conversa_id") ?? "");
+  const canal = String(formData.get("canal") ?? "");
+  const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
+  const data_hora = lerDataHora(formData.get("data_hora"));
+
+  if (!conversaId) return { error: "Conversa nao identificada." };
+  if (!CANAIS_VALIDOS.includes(canal)) return { error: "Canal invalido." };
+  if (!data_hora) return { error: "Informe a data e hora da visita." };
+  if (new Date(data_hora) <= new Date())
+    return { error: "A visita precisa ser numa data futura." };
+
+  const contexto = await carregarContextoConversa(conversaId, sessao.user.id);
+  if (!contexto) return { error: "Conversa nao encontrada." };
+  if (!usuarioPodeSugerirVisita(sessao, contexto))
+    return { error: "Apenas anunciante ou corretor pode sugerir visita." };
+  if (["concluido", "perdido"].includes(contexto.negocioStatus))
+    return { error: "Nao e possivel agendar visita em negocio encerrado." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("visitas")
+    .insert({
+      imovel_id: contexto.imovelId,
+      negocio_id: contexto.negocioId,
+      data_hora,
+      canal,
+      observacoes,
+      status: "aguardando_confirmacao",
+      solicitante_id: sessao.user.id,
+    })
+    .select("id, negocio_id, imovel_id, data_hora, canal, observacoes, status")
+    .single();
+
+  if (error || !data)
+    return { error: "Nao foi possivel sugerir a visita. Tente novamente." };
+
+  if (contexto.negocioStatus !== "visita") {
+    await supabase
+      .from("negocios")
+      .update({ status: "visita" })
+      .eq("id", contexto.negocioId);
+  }
+
+  const visita = data as VisitaChat;
+  const mensagemCriada = await inserirMensagemVisita({
+    conversaId,
+    autorId: sessao.user.id,
+    tipo: "visita_sugerida",
+    corpo: `Visita sugerida para ${formatarDataHora(data_hora)}.`,
+    visita,
+  });
+
+  if (!mensagemCriada)
+    return { error: "A visita foi criada, mas nao foi possivel publicar no chat." };
+
+  await registrarEvento("visita_sugerida", {
+    entidadeId: visita.id,
+    payload: {
+      conversa_id: conversaId,
+      negocio_id: contexto.negocioId,
+      imovel_id: contexto.imovelId,
+      data_hora,
+      canal,
+    },
+  });
+
+  revalidarFluxoVisita(conversaId, contexto.negocioId);
+  return { message: "Visita sugerida." };
+}
+
+export async function confirmarVisitaNoChat(
+  _prev: VisitaState,
+  formData: FormData,
+): Promise<VisitaState> {
+  return responderVisitaNoChat(formData, "confirmada");
+}
+
+export async function recusarVisitaNoChat(
+  _prev: VisitaState,
+  formData: FormData,
+): Promise<VisitaState> {
+  return responderVisitaNoChat(formData, "cancelada");
+}
+
+async function responderVisitaNoChat(
+  formData: FormData,
+  status: "confirmada" | "cancelada",
+): Promise<VisitaState> {
+  const sessao = await getSessao();
+  if (!sessao) return { error: "Sessao expirada. Entre novamente." };
+
+  const conversaId = String(formData.get("conversa_id") ?? "");
+  const visitaId = String(formData.get("visita_id") ?? "");
+
+  if (!conversaId) return { error: "Conversa nao identificada." };
+  if (!visitaId) return { error: "Visita nao identificada." };
+
+  const contexto = await carregarContextoConversa(conversaId, sessao.user.id);
+  if (!contexto) return { error: "Conversa nao encontrada." };
+  if (!usuarioPodeResponderVisita(sessao, contexto))
+    return { error: "Apenas o comprador pode responder a visita." };
+
+  const supabase = await createClient();
+  const { data: visitaAtual, error: visitaErro } = await supabase
+    .from("visitas")
+    .select("id, negocio_id, imovel_id, data_hora, canal, observacoes, status")
+    .eq("id", visitaId)
+    .eq("negocio_id", contexto.negocioId)
+    .maybeSingle();
+
+  if (visitaErro || !visitaAtual)
+    return { error: "Visita nao encontrada." };
+
+  if (!["solicitada", "aguardando_confirmacao", "reagendada"].includes(visitaAtual.status))
+    return { error: "Esta visita nao esta aguardando resposta." };
+
+  const { data, error } = await supabase
+    .from("visitas")
+    .update({ status })
+    .eq("id", visitaId)
+    .select("id, negocio_id, imovel_id, data_hora, canal, observacoes, status")
+    .single();
+
+  if (error || !data)
+    return { error: "Nao foi possivel responder a visita. Tente novamente." };
+
+  const visita = data as VisitaChat;
+  const confirmou = status === "confirmada";
+  const mensagemCriada = await inserirMensagemVisita({
+    conversaId,
+    autorId: sessao.user.id,
+    tipo: confirmou ? "visita_confirmada" : "visita_recusada",
+    corpo: confirmou
+      ? `Visita confirmada para ${formatarDataHora(visita.data_hora)}.`
+      : `Visita recusada para ${formatarDataHora(visita.data_hora)}.`,
+    visita,
+  });
+
+  if (!mensagemCriada)
+    return { error: "A visita foi atualizada, mas nao foi possivel publicar no chat." };
+
+  await registrarEvento(confirmou ? "visita_confirmada" : "visita_recusada", {
+    entidadeId: visita.id,
+    payload: {
+      conversa_id: conversaId,
+      negocio_id: contexto.negocioId,
+      status,
+    },
+  });
+
+  revalidarFluxoVisita(conversaId, contexto.negocioId);
+  return { message: confirmou ? "Visita confirmada." : "Visita recusada." };
 }
 
 /**

@@ -13,7 +13,11 @@ let ok = 0,
   fail = 0;
 const check = (n, c, e = "") => {
   console.log((c ? "PASS" : "FAIL") + ":", n, c ? "" : ":: " + e);
-  c ? ok++ : fail++;
+  if (c) {
+    ok++;
+  } else {
+    fail++;
+  }
 };
 
 const senha = "senha-teste-123";
@@ -51,6 +55,8 @@ check("vitrine pública (anon)", (vit?.length ?? 0) >= 1, `rows=${vit?.length}`)
 
 const comp = createClient(URL, process.env.ANON);
 await comp.auth.signInWithPassword({ email: "comp@teste.local", password: senha });
+const prop = createClient(URL, process.env.ANON);
+await prop.auth.signInWithPassword({ email: "prop@teste.local", password: senha });
 const { data: negId, error: eInt } = await comp.rpc("demonstrar_interesse", {
   p_imovel_id: imovel.id,
 });
@@ -100,14 +106,44 @@ const { data: props, error: ePropLe } = await comp
   .eq("negocio_id", negId);
 check("participante: ler propostas", !ePropLe && (props?.length ?? 0) >= 1, ePropLe?.message);
 
-const { error: eVis } = await comp.from("visitas").insert({
-  imovel_id: imovel.id,
-  negocio_id: negId,
-  solicitante_id: compId,
-  data_hora: new Date(Date.now() + 86400000).toISOString(),
-  canal: "presencial",
+const { data: visita, error: eVis } = await prop
+  .from("visitas")
+  .insert({
+    imovel_id: imovel.id,
+    negocio_id: negId,
+    solicitante_id: propId,
+    data_hora: new Date(Date.now() + 86400000).toISOString(),
+    canal: "presencial",
+    status: "aguardando_confirmacao",
+  })
+  .select("id")
+  .single();
+check("anunciante: sugerir visita", !eVis && visita?.id, eVis?.message);
+
+const { error: eMsgVisita } = await prop.from("mensagens").insert({
+  conversa_id: conv.id,
+  autor_id: propId,
+  corpo: "Visita sugerida pelo chat.",
+  tipo: "visita_sugerida",
+  metadata: { visita_id: visita?.id },
 });
-check("participante: agendar visita", !eVis, eVis?.message);
+check("anunciante: registrar visita no chat", !eMsgVisita, eMsgVisita?.message);
+
+const { data: visitasComp, error: eVisLe } = await comp
+  .from("visitas")
+  .select("id, status")
+  .eq("negocio_id", negId);
+check(
+  "comprador: ler visita do negocio",
+  !eVisLe && (visitasComp?.length ?? 0) >= 1,
+  eVisLe?.message,
+);
+
+const { error: eVisConf } = await comp
+  .from("visitas")
+  .update({ status: "confirmada" })
+  .eq("id", visita?.id);
+check("comprador: confirmar visita", !eVisConf, eVisConf?.message);
 
 const { error: eDoc } = await comp.from("documentos").insert({
   negocio_id: negId,

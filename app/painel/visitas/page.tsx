@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -27,6 +29,7 @@ type ImovelEmbed = {
 
 type VisitaLinha = {
   id: string;
+  negocio_id: string | null;
   status: string;
   canal: string;
   data_hora: string | null;
@@ -40,7 +43,7 @@ export default async function VisitasPage() {
     supabase
       .from("visitas")
       .select(
-        "id, status, canal, data_hora, imoveis(logradouro, numero, bairro, cidade)",
+        "id, negocio_id, status, canal, data_hora, imoveis(logradouro, numero, bairro, cidade)",
       )
       .order("data_hora", { ascending: false }),
     supabase
@@ -83,6 +86,7 @@ export default async function VisitasPage() {
                 <TableHead>Data / hora</TableHead>
                 <TableHead>Canal</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Negocio</TableHead>
                 <TableHead className="w-px" />
               </TableRow>
             </TableHeader>
@@ -102,6 +106,21 @@ export default async function VisitasPage() {
                     <Badge variant={variantStatus(v.status)}>
                       {rotuloStatus(v.status)}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {v.negocio_id ? (
+                      <Link
+                        href={`/painel/negocios/${v.negocio_id}`}
+                        className={buttonVariants({
+                          variant: "outline",
+                          size: "sm",
+                        })}
+                      >
+                        Abrir
+                      </Link>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">-</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end">
