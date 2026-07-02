@@ -7,6 +7,7 @@ import { signup, type AuthState } from "@/actions/auth";
 import { GoogleAuthButton } from "@/components/publico/google-auth-button";
 import {
   CADASTRO_NEXT_PADRAO,
+  criarDestinoAceiteTermos,
   criarLoginHref,
   ehDestinoInteresse,
   resolverAuthNext,
@@ -35,6 +36,11 @@ function CadastroForm() {
     searchParams.get("next"),
     CADASTRO_NEXT_PADRAO,
   );
+  const nextComTermos = criarDestinoAceiteTermos(
+    ["comprador"],
+    nextSeguro,
+    "cadastro",
+  );
 
   return (
     <AuthShell
@@ -56,7 +62,7 @@ function CadastroForm() {
           </p>
         )}
 
-        <GoogleAuthButton next={nextSeguro}>Criar conta com o Google</GoogleAuthButton>
+        <GoogleAuthButton next={nextComTermos}>Criar conta com o Google</GoogleAuthButton>
 
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="h-px flex-1 bg-border" />
@@ -65,7 +71,7 @@ function CadastroForm() {
         </div>
 
         <form action={formAction} className="flex flex-col gap-4">
-          <input type="hidden" name="next" value={nextSeguro} />
+          <input type="hidden" name="next" value={nextComTermos} />
           <div className="flex flex-col gap-2">
             <Label htmlFor="nome">Nome</Label>
             <Input id="nome" name="nome" type="text" required />
@@ -99,7 +105,7 @@ function CadastroForm() {
       <p className="mt-4 text-center text-sm text-muted-foreground">
         Já tem conta?{" "}
         <Link
-          href={criarLoginHref(nextSeguro)}
+          href={criarLoginHref(nextComTermos)}
           className="font-medium text-primary hover:underline"
         >
           Entrar

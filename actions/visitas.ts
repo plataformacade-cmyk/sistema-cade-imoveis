@@ -8,6 +8,11 @@ import {
   detectarContatoExterno,
 } from "@/lib/chat/contato";
 import { registrarTentativaContato } from "@/lib/chat/tentativas-contato";
+import {
+  mensagemTermosPendentes,
+  perfisTermosDosPapeisNegocio,
+  usuarioTemTermosPendentes,
+} from "@/lib/termos";
 import { revalidatePath } from "next/cache";
 
 export type VisitaState = { error?: string; message?: string };
@@ -187,6 +192,12 @@ export async function agendarVisita(
   if (new Date(data_hora) <= new Date())
     return { error: "A visita precisa ser numa data futura." };
 
+  if (await usuarioTemTermosPendentes(sessao.user.id, ["comprador"])) {
+    return {
+      error: mensagemTermosPendentes(["comprador"], "/painel/visitas", "visita"),
+    };
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("visitas")
@@ -237,6 +248,20 @@ export async function sugerirVisitaNoChat(
     return { error: "Apenas anunciante ou corretor pode sugerir visita." };
   if (["concluido", "perdido"].includes(contexto.negocioStatus))
     return { error: "Nao e possivel agendar visita em negocio encerrado." };
+
+  const perfisTermos = perfisTermosDosPapeisNegocio(
+    contexto.papeisUsuario,
+    sessao.isAdmin,
+  );
+  if (await usuarioTemTermosPendentes(sessao.user.id, perfisTermos)) {
+    return {
+      error: mensagemTermosPendentes(
+        perfisTermos,
+        `/painel/mensagens/${conversaId}`,
+        "visita",
+      ),
+    };
+  }
 
   if (observacoes) {
     const contato = detectarContatoExterno(observacoes);
@@ -339,6 +364,20 @@ async function responderVisitaNoChat(
   if (!contexto) return { error: "Conversa nao encontrada." };
   if (!usuarioPodeResponderVisita(sessao, contexto))
     return { error: "Apenas o comprador pode responder a visita." };
+
+  const perfisTermos = perfisTermosDosPapeisNegocio(
+    contexto.papeisUsuario,
+    sessao.isAdmin,
+  );
+  if (await usuarioTemTermosPendentes(sessao.user.id, perfisTermos)) {
+    return {
+      error: mensagemTermosPendentes(
+        perfisTermos,
+        `/painel/mensagens/${conversaId}`,
+        "visita",
+      ),
+    };
+  }
 
   const supabase = await createClient();
   const { data: visitaAtual, error: visitaErro } = await supabase

@@ -2,8 +2,11 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getSessao } from "@/lib/auth";
+import { criarDestinoAceiteTermos } from "@/lib/auth-redirect";
 import { registrarEvento } from "@/lib/log";
+import { usuarioTemTermosPendentes, type PerfilTermo } from "@/lib/termos";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 export type ImovelState = { error?: string; ok?: boolean; id?: string };
 
@@ -19,16 +22,13 @@ const STATUSES = [
 type Tipo = (typeof TIPOS)[number];
 type Status = (typeof STATUSES)[number];
 
-/** Converte texto de FormData em número ou null (vazio = null). */
 function num(v: FormDataEntryValue | null): number | null {
   const s = String(v ?? "").trim();
   if (s === "") return null;
-  // aceita vírgula decimal (pt-BR)
   const n = Number(s.replace(/\./g, "").replace(",", "."));
   return Number.isFinite(n) ? n : null;
 }
 
-/** Converte texto de FormData em inteiro ou null. */
 function int(v: FormDataEntryValue | null): number | null {
   const s = String(v ?? "").trim();
   if (s === "") return null;
@@ -36,13 +36,11 @@ function int(v: FormDataEntryValue | null): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Texto limpo ou null. */
 function txt(v: FormDataEntryValue | null): string | null {
   const s = String(v ?? "").trim();
   return s === "" ? null : s;
 }
 
-/** Lê o array de fotos serializado em JSON no campo escondido. */
 function lerFotos(v: FormDataEntryValue | null): string[] {
   try {
     const arr = JSON.parse(String(v ?? "[]"));
@@ -54,7 +52,6 @@ function lerFotos(v: FormDataEntryValue | null): string[] {
   return [];
 }
 
-/** Monta o payload validado a partir do FormData. Retorna erro legível se inválido. */
 function montarPayload(formData: FormData):
   | { erro: string }
   | { dados: Record<string, unknown> } {
@@ -65,14 +62,12 @@ function montarPayload(formData: FormData):
   const uf = txt(formData.get("uf"));
 
   if (!tipo || !TIPOS.includes(tipo))
-    return { erro: "Selecione um tipo de imóvel válido." };
-  if (!STATUSES.includes(status))
-    return { erro: "Status inválido." };
+    return { erro: "Selecione um tipo de imovel valido." };
+  if (!STATUSES.includes(status)) return { erro: "Status invalido." };
   if (!cep) return { erro: "Informe o CEP." };
   if (valor_anuncio === null || valor_anuncio <= 0)
-    return { erro: "Informe um valor de anúncio maior que zero." };
-  if (uf && uf.length !== 2)
-    return { erro: "A UF deve ter 2 caracteres." };
+    return { erro: "Informe um valor de anuncio maior que zero." };
+  if (uf && uf.length !== 2) return { erro: "A UF deve ter 2 caracteres." };
 
   return {
     dados: {
@@ -95,24 +90,40 @@ function montarPayload(formData: FormData):
   };
 }
 
+function perfilTermoAnunciante(papel: string): PerfilTermo {
+  return papel === "corretor" ? "corretor" : "proprietario";
+}
+
 export async function criarImovel(
   _prev: ImovelState,
   formData: FormData,
 ): Promise<ImovelState> {
   const sessao = await getSessao();
-  if (!sessao) return { error: "Sessão expirada. Entre novamente." };
+  if (!sessao) return { error: "Sessao expirada. Entre novamente." };
+
+  const perfilTermo = perfilTermoAnunciante(sessao.papel);
+  if (await usuarioTemTermosPendentes(sessao.user.id, [perfilTermo])) {
+    redirect(criarDestinoAceiteTermos([perfilTermo], "/painel/imoveis/novo", "imovel"));
+  }
 
   const r = montarPayload(formData);
   if ("erro" in r) return { error: r.erro };
 
   const supabase = await createClient();
+  if (sessao.papel === "cliente") {
+    await supabase
+      .from("usuarios")
+      .update({ papel: "proprietario" })
+      .eq("id", sessao.user.id);
+  }
+
   const { data, error } = await supabase
     .from("imoveis")
     .insert({ ...r.dados, proprietario_id: sessao.user.id })
     .select("id")
     .single();
 
-  if (error) return { error: "Não foi possível salvar o imóvel." };
+  if (error) return { error: "Nao foi possivel salvar o imovel." };
 
   await registrarEvento("imovel_cadastrado", {
     entidadeId: data.id,
@@ -120,6 +131,7 @@ export async function criarImovel(
   });
 
   revalidatePath("/painel/imoveis");
+  revalidatePath("/painel", "layout");
   return { ok: true, id: data.id };
 }
 
@@ -128,10 +140,15 @@ export async function editarImovel(
   formData: FormData,
 ): Promise<ImovelState> {
   const sessao = await getSessao();
-  if (!sessao) return { error: "Sessão expirada. Entre novamente." };
+  if (!sessao) return { error: "Sessao expirada. Entre novamente." };
+
+  const perfilTermo = perfilTermoAnunciante(sessao.papel);
+  if (await usuarioTemTermosPendentes(sessao.user.id, [perfilTermo])) {
+    redirect(criarDestinoAceiteTermos([perfilTermo], "/painel/imoveis", "imovel"));
+  }
 
   const id = txt(formData.get("id"));
-  if (!id) return { error: "Imóvel não identificado." };
+  if (!id) return { error: "Imovel nao identificado." };
 
   const r = montarPayload(formData);
   if ("erro" in r) return { error: r.erro };
@@ -142,7 +159,7 @@ export async function editarImovel(
     .update(r.dados)
     .eq("id", id);
 
-  if (error) return { error: "Não foi possível atualizar o imóvel." };
+  if (error) return { error: "Nao foi possivel atualizar o imovel." };
 
   await registrarEvento("imovel_editado", {
     entidadeId: id,

@@ -1,9 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { criarDestinoInteresse, criarLoginHref } from "@/lib/auth-redirect";
+import {
+  criarDestinoAceiteTermos,
+  criarDestinoInteresse,
+  criarLoginHref,
+} from "@/lib/auth-redirect";
 import { getSessao } from "@/lib/auth";
 import { registrarInteresseNoImovel } from "@/lib/interesse";
+import { usuarioTemTermosPendentes } from "@/lib/termos";
 
 export type InteresseState = { error?: string; message?: string };
 
@@ -23,6 +28,10 @@ export async function demonstrarInteresse(
 
   const sessao = await getSessao();
   if (!sessao) redirect(criarLoginHref(destinoInteresse));
+
+  if (await usuarioTemTermosPendentes(sessao.user.id, ["comprador"])) {
+    redirect(criarDestinoAceiteTermos(["comprador"], destinoInteresse, "interesse"));
+  }
 
   const resultado = await registrarInteresseNoImovel(imovelId, sessao);
 

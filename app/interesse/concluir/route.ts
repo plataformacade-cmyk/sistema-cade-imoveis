@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
-import { criarDestinoInteresse, criarLoginHref } from "@/lib/auth-redirect";
+import {
+  criarDestinoAceiteTermos,
+  criarDestinoInteresse,
+  criarLoginHref,
+} from "@/lib/auth-redirect";
 import { getSessao } from "@/lib/auth";
 import { registrarInteresseNoImovel } from "@/lib/interesse";
+import { usuarioTemTermosPendentes } from "@/lib/termos";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -15,6 +20,12 @@ export async function GET(request: Request) {
   const sessao = await getSessao();
   if (!sessao) {
     return NextResponse.redirect(new URL(criarLoginHref(destinoInteresse), url));
+  }
+
+  if (await usuarioTemTermosPendentes(sessao.user.id, ["comprador"])) {
+    return NextResponse.redirect(
+      new URL(criarDestinoAceiteTermos(["comprador"], destinoInteresse, "interesse"), url),
+    );
   }
 
   const resultado = await registrarInteresseNoImovel(imovelId, sessao);

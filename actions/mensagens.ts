@@ -8,6 +8,11 @@ import {
   detectarContatoExterno,
 } from "@/lib/chat/contato";
 import { registrarTentativaContato } from "@/lib/chat/tentativas-contato";
+import {
+  mensagemTermosPendentes,
+  perfisTermosDosPapeisNegocio,
+  usuarioTemTermosPendentes,
+} from "@/lib/termos";
 import { revalidatePath } from "next/cache";
 
 export type MensagemState = { error?: string; message?: string };
@@ -70,6 +75,29 @@ export async function enviarMensagem(
 
   if (conversaErro || !conversa?.negocio_id)
     return { error: "Conversa nao encontrada." };
+
+  const { data: papeis } = await supabase
+    .from("papeis_negocio")
+    .select("papel")
+    .eq("negocio_id", conversa.negocio_id)
+    .eq("usuario_id", sessao.user.id)
+    .eq("ativo", true);
+  const perfisTermos = perfisTermosDosPapeisNegocio(
+    (papeis ?? []).map((papel) => String(papel.papel)),
+    sessao.isAdmin,
+  );
+  if (
+    perfisTermos.length > 0 &&
+    (await usuarioTemTermosPendentes(sessao.user.id, perfisTermos))
+  ) {
+    return {
+      error: mensagemTermosPendentes(
+        perfisTermos,
+        `/painel/mensagens/${conversa_id}`,
+        "mensagem",
+      ),
+    };
+  }
 
   const contato = detectarContatoExterno(corpo);
   if (contato.bloqueado) {

@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import {
   CADASTRO_NEXT_PADRAO,
-  ehDestinoInteresse,
+  criarDestinoAceiteTermos,
   resolverAuthNext,
 } from "@/lib/auth-redirect";
 import { revalidatePath } from "next/cache";
@@ -57,9 +57,8 @@ export async function signup(
   const nome = String(formData.get("nome") ?? "");
   const next = resolverAuthNext(
     String(formData.get("next") ?? ""),
-    CADASTRO_NEXT_PADRAO,
+    criarDestinoAceiteTermos(["comprador"], CADASTRO_NEXT_PADRAO, "cadastro"),
   );
-  const destino = ehDestinoInteresse(next) ? next : CADASTRO_NEXT_PADRAO;
 
   if (password.length < 8)
     return { error: "A senha precisa ter ao menos 8 caracteres." };
@@ -76,7 +75,7 @@ export async function signup(
   // sessão. Loga direto e leva ao onboarding (escolher buscar × anunciar).
   if (data.session) {
     revalidatePath("/", "layout");
-    redirect(destino);
+    redirect(next);
   }
 
   // Fallback (se algum dia ligarem a confirmação por e-mail).

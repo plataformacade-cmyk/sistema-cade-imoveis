@@ -8,6 +8,11 @@ import {
   detectarContatoExterno,
 } from "@/lib/chat/contato";
 import { registrarTentativaContato } from "@/lib/chat/tentativas-contato";
+import {
+  mensagemTermosPendentes,
+  perfisTermosDosPapeisNegocio,
+  usuarioTemTermosPendentes,
+} from "@/lib/termos";
 import { revalidatePath } from "next/cache";
 
 export type PropostaState = { error?: string; message?: string };
@@ -220,6 +225,20 @@ async function criarProposta(
   if (!negocioAbertoParaProposta(contexto))
     return { error: "Nao e possivel propor em negocio encerrado." };
 
+  const perfisTermos = perfisTermosDosPapeisNegocio(
+    contexto.papeisUsuario,
+    sessao.isAdmin,
+  );
+  if (await usuarioTemTermosPendentes(sessao.user.id, perfisTermos)) {
+    return {
+      error: mensagemTermosPendentes(
+        perfisTermos,
+        `/painel/negocios/${negocioId}`,
+        "proposta",
+      ),
+    };
+  }
+
   if (condicoes) {
     const contato = detectarContatoExterno(condicoes);
     if (contato.bloqueado) {
@@ -370,6 +389,19 @@ export async function responderProposta(
   if (!contexto) return { error: "Negocio nao encontrado." };
   if (!negocioAbertoParaProposta(contexto))
     return { error: "Nao e possivel responder proposta em negocio encerrado." };
+  const perfisTermos = perfisTermosDosPapeisNegocio(
+    contexto.papeisUsuario,
+    sessao.isAdmin,
+  );
+  if (await usuarioTemTermosPendentes(sessao.user.id, perfisTermos)) {
+    return {
+      error: mensagemTermosPendentes(
+        perfisTermos,
+        `/painel/negocios/${proposta.negocio_id}`,
+        "proposta",
+      ),
+    };
+  }
   if (proposta.autor_id === sessao.user.id)
     return { error: "O autor da proposta nao pode responder a propria proposta." };
   if (!["enviada", "contraproposta"].includes(proposta.status))
