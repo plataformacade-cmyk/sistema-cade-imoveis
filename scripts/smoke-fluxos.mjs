@@ -145,6 +145,59 @@ const { error: eVisConf } = await comp
   .eq("id", visita?.id);
 check("comprador: confirmar visita", !eVisConf, eVisConf?.message);
 
+const { error: eVisRealizada } = await prop
+  .from("visitas")
+  .update({ status: "realizada" })
+  .eq("id", visita?.id);
+check("anunciante: marcar visita realizada", !eVisRealizada, eVisRealizada?.message);
+
+const { data: negProposta } = await admin
+  .from("negocios")
+  .select("status")
+  .eq("id", negId)
+  .single();
+check(
+  "visita realizada move negocio para proposta",
+  negProposta?.status === "proposta",
+  `status=${negProposta?.status}`,
+);
+
+const { data: negPerdido } = await admin
+  .from("negocios")
+  .insert({ imovel_id: imovel.id, status: "perdido", criado_por: compId })
+  .select("id")
+  .single();
+await admin.from("papeis_negocio").insert([
+  { negocio_id: negPerdido.id, usuario_id: compId, papel: "comprador", ativo: true },
+  { negocio_id: negPerdido.id, usuario_id: propId, papel: "proprietario", ativo: true },
+]);
+const { data: visitaPerdida } = await admin
+  .from("visitas")
+  .insert({
+    imovel_id: imovel.id,
+    negocio_id: negPerdido.id,
+    solicitante_id: propId,
+    data_hora: new Date(Date.now() + 172800000).toISOString(),
+    canal: "presencial",
+    status: "confirmada",
+  })
+  .select("id")
+  .single();
+const { error: eVisPerdida } = await prop
+  .from("visitas")
+  .update({ status: "realizada" })
+  .eq("id", visitaPerdida?.id);
+const { data: negPerdidoDepois } = await admin
+  .from("negocios")
+  .select("status")
+  .eq("id", negPerdido.id)
+  .single();
+check(
+  "visita realizada nao reabre negocio perdido",
+  !eVisPerdida && negPerdidoDepois?.status === "perdido",
+  eVisPerdida?.message ?? `status=${negPerdidoDepois?.status}`,
+);
+
 const { error: eDoc } = await comp.from("documentos").insert({
   negocio_id: negId,
   tipo_doc: "rg",

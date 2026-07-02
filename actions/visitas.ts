@@ -37,6 +37,12 @@ type VisitaChat = {
   status: string;
 };
 
+type VisitaStatusContexto = {
+  id: string;
+  negocio_id: string | null;
+  status: string;
+};
+
 const fmtVisita = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
   month: "2-digit",
@@ -380,6 +386,42 @@ export async function mudarStatusVisita(
   if (!STATUS_VALIDOS.includes(status)) return { error: "Status inválido." };
 
   const supabase = await createClient();
+  const { data: visitaAtual, error: visitaAtualErro } = await supabase
+    .from("visitas")
+    .select("id, negocio_id, status")
+    .eq("id", visita_id)
+    .maybeSingle();
+
+  if (visitaAtualErro || !visitaAtual)
+    return { error: "Visita nao encontrada." };
+
+  const visita = visitaAtual as VisitaStatusContexto;
+  let negocioStatusAntes: string | null = null;
+  let negocioStatusDepois: string | null = null;
+
+  if (status === "realizada") {
+    if (!visita.negocio_id)
+      return {
+        error: "Apenas visitas vinculadas a um negocio podem ser marcadas como realizadas.",
+      };
+
+    const { data: negocio, error: negocioErro } = await supabase
+      .from("negocios")
+      .select("status")
+      .eq("id", visita.negocio_id)
+      .maybeSingle();
+
+    if (negocioErro || !negocio)
+      return { error: "Negocio vinculado nao encontrado." };
+
+    negocioStatusAntes = String(negocio.status);
+    if (["concluido", "perdido"].includes(negocioStatusAntes))
+      return {
+        error:
+          "Nao e possivel marcar visita realizada em negocio concluido ou perdido.",
+      };
+  }
+
   const { error } = await supabase
     .from("visitas")
     .update({ status })
@@ -390,10 +432,42 @@ export async function mudarStatusVisita(
 
   await registrarEvento("visita_status_mudada", {
     entidadeId: visita_id,
-    payload: { status },
+    payload: { status, negocio_id: visita.negocio_id },
   });
 
+  if (status === "realizada" && visita.negocio_id) {
+    const { data: negocioDepois } = await supabase
+      .from("negocios")
+      .select("status")
+      .eq("id", visita.negocio_id)
+      .maybeSingle();
+
+    negocioStatusDepois = negocioDepois?.status ? String(negocioDepois.status) : null;
+
+    if (
+      negocioStatusAntes &&
+      ["qualificacao", "visita"].includes(negocioStatusAntes) &&
+      negocioStatusDepois === "proposta"
+    ) {
+      await registrarEvento("negocio_status_mudado", {
+        entidadeId: visita.negocio_id,
+        payload: {
+          status: "proposta",
+          status_anterior: negocioStatusAntes,
+          motivo: "visita_realizada",
+          visita_id,
+        },
+      });
+    }
+  }
+
   revalidatePath("/painel/visitas");
+  if (visita.negocio_id) {
+    revalidatePath("/painel/negocios");
+    revalidatePath(`/painel/negocios/${visita.negocio_id}`);
+    revalidatePath("/painel/mensagens");
+    revalidatePath("/painel", "layout");
+  }
   return { message: "Status atualizado." };
 }
 
