@@ -297,6 +297,157 @@ check(
   eDocCorrRev?.message ?? JSON.stringify(docRevisado),
 );
 
+const { error: eDeclSemEmpresa } = await prop
+  .from("negocio_vendedor_declaracoes")
+  .upsert(
+    {
+      negocio_id: negId,
+      vendedor_id: propId,
+      possui_empresa: false,
+      declarado_por: propId,
+    },
+    { onConflict: "negocio_id,vendedor_id" },
+  );
+check("vendedor: declara sem empresa", !eDeclSemEmpresa, eDeclSemEmpresa?.message);
+
+const { error: eCnpjInvalido } = await prop.from("vendedor_empresas").insert({
+  usuario_id: propId,
+  cnpj: "00000000000000",
+});
+check("vendedor: CNPJ invalido rejeitado", !!eCnpjInvalido, "CNPJ invalido aceito");
+
+const { data: empresa1, error: eEmpresa1 } = await prop
+  .from("vendedor_empresas")
+  .insert({
+    usuario_id: propId,
+    cnpj: "04252011000110",
+    razao_social: "Empresa Smoke Um LTDA",
+  })
+  .select("id, cnpj")
+  .single();
+check("vendedor: cadastra CNPJ valido", !eEmpresa1 && empresa1?.id, eEmpresa1?.message);
+
+const { data: empresa2, error: eEmpresa2 } = await prop
+  .from("vendedor_empresas")
+  .insert({
+    usuario_id: propId,
+    cnpj: "11222333000181",
+    razao_social: "Empresa Smoke Dois LTDA",
+  })
+  .select("id")
+  .single();
+check("vendedor: cadastra multiplos CNPJs", !eEmpresa2 && empresa2?.id, eEmpresa2?.message);
+
+const { error: eVinculoEmpresa } = await prop.from("negocio_vendedor_empresas").insert([
+  {
+    negocio_id: negId,
+    vendedor_id: propId,
+    vendedor_empresa_id: empresa1?.id,
+    criado_por: propId,
+  },
+  {
+    negocio_id: negId,
+    vendedor_id: propId,
+    vendedor_empresa_id: empresa2?.id,
+    criado_por: propId,
+  },
+]);
+check("vendedor: vincula empresas ao negocio", !eVinculoEmpresa, eVinculoEmpresa?.message);
+
+await prop.from("negocio_vendedor_declaracoes").upsert(
+  {
+    negocio_id: negId,
+    vendedor_id: propId,
+    possui_empresa: true,
+    declarado_por: propId,
+  },
+  { onConflict: "negocio_id,vendedor_id" },
+);
+
+const { data: checklistEmpresa, error: eChecklistEmpresa } = await prop
+  .from("documentos_checklist_itens")
+  .select("id, codigo")
+  .eq("tipo_negocio", "venda")
+  .eq("perfil", "vendedor")
+  .eq("codigo", "empresa_cnd_federal_divida_ativa")
+  .eq("ativo", true)
+  .single();
+check(
+  "checklist documentos: certidao empresarial",
+  !eChecklistEmpresa && checklistEmpresa?.id,
+  eChecklistEmpresa?.message,
+);
+
+const { error: eDocEmpresaSemCnpj } = await prop.from("documentos").insert({
+  negocio_id: negId,
+  checklist_item_id: checklistEmpresa?.id,
+  tipo_doc: "empresa_cnd_federal_divida_ativa",
+  arquivo_url: `${propId}/empresa-sem-cnpj.pdf`,
+  enviado_por: propId,
+  status: "recebido",
+});
+check(
+  "certidao empresarial exige CNPJ vinculado",
+  !!eDocEmpresaSemCnpj,
+  "certidao sem vendedor_empresa_id foi aceita",
+);
+
+const { data: docEmpresa, error: eDocEmpresa } = await prop
+  .from("documentos")
+  .insert({
+    negocio_id: negId,
+    checklist_item_id: checklistEmpresa?.id,
+    vendedor_empresa_id: empresa1?.id,
+    tipo_doc: "sera_derivado",
+    arquivo_url: `${propId}/empresa-cnd.pdf`,
+    enviado_por: propId,
+    status: "recebido",
+  })
+  .select("id, tipo_doc, perfil, vendedor_empresa_id")
+  .single();
+check(
+  "vendedor: anexa certidao por CNPJ",
+  !eDocEmpresa &&
+    docEmpresa?.tipo_doc === "empresa_cnd_federal_divida_ativa" &&
+    docEmpresa?.vendedor_empresa_id === empresa1?.id,
+  eDocEmpresa?.message ?? JSON.stringify(docEmpresa),
+);
+
+const { data: empresasFora, error: eEmpresaForaLe } = await fora
+  .from("vendedor_empresas")
+  .select("id")
+  .eq("id", empresa1?.id);
+check(
+  "usuario externo: nao le empresa do vendedor",
+  !eEmpresaForaLe && (empresasFora?.length ?? 0) === 0,
+  eEmpresaForaLe?.message ?? `rows=${empresasFora?.length}`,
+);
+
+const { error: eDocEmpresaFora } = await fora.from("documentos").insert({
+  negocio_id: negId,
+  checklist_item_id: checklistEmpresa?.id,
+  vendedor_empresa_id: empresa1?.id,
+  tipo_doc: "empresa_cnd_federal_divida_ativa",
+  arquivo_url: `${foraId}/empresa-cnd.pdf`,
+  enviado_por: foraId,
+  status: "recebido",
+});
+check("usuario externo: nao anexa certidao empresarial", !!eDocEmpresaFora, "insert externo nao bloqueado");
+
+const { data: docEmpresaVerificado, error: eDocEmpresaCorrRev } = await corr
+  .from("documentos")
+  .update({ status: "verificado" })
+  .eq("id", docEmpresa?.id)
+  .select("status, revisado_por")
+  .single();
+check(
+  "corretor: verifica certidao empresarial",
+  !eDocEmpresaCorrRev &&
+    docEmpresaVerificado?.status === "verificado" &&
+    docEmpresaVerificado?.revisado_por === corrId,
+  eDocEmpresaCorrRev?.message ?? JSON.stringify(docEmpresaVerificado),
+);
+
 const { error: eCom } = await comp.from("comissoes").insert({
   negocio_id: negId,
   percentual: 6,

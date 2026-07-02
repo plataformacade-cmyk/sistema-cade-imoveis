@@ -36,6 +36,19 @@ export function rotuloTipoDoc(tipo: string, itens: ChecklistItem[]): string {
   return itens.find((i) => i.codigo === tipo)?.titulo ?? tipo;
 }
 
+export function ehCertidaoEmpresa(item: ChecklistItem): boolean {
+  return item.codigo.startsWith("empresa_");
+}
+
+export function formatarCnpj(cnpj: string): string {
+  const limpo = cnpj.replace(/\D/g, "");
+  if (limpo.length !== 14) return cnpj;
+  return limpo.replace(
+    /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,
+    "$1.$2.$3/$4-$5",
+  );
+}
+
 export const DOC_STATUS_OPCOES = [
   { value: "pendente", label: "Pendente" },
   { value: "recebido", label: "Recebido" },

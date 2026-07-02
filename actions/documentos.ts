@@ -56,6 +56,8 @@ export async function enviarDocumento(
   const negocio_id = String(formData.get("negocio_id") ?? "");
   const checklist_item_id = String(formData.get("checklist_item_id") ?? "");
   const arquivo_url = String(formData.get("arquivo_url") ?? "").trim();
+  const vendedor_empresa_id =
+    String(formData.get("vendedor_empresa_id") ?? "").trim() || null;
 
   if (!negocio_id) return { error: "Negocio nao identificado." };
   if (!checklist_item_id) return { error: "Item do checklist nao identificado." };
@@ -84,11 +86,31 @@ export async function enviarDocumento(
     return { error: "Este documento nao se aplica ao tipo do negocio." };
 
   const itemChecklist = item as ChecklistItem;
+  const ehCertidaoEmpresa = itemChecklist.codigo.startsWith("empresa_");
+  if (ehCertidaoEmpresa && !vendedor_empresa_id)
+    return { error: "Selecione o CNPJ da empresa para anexar esta certidao." };
+  if (!ehCertidaoEmpresa && vendedor_empresa_id)
+    return { error: "CNPJ so pode ser usado em certidoes empresariais." };
+
+  if (vendedor_empresa_id) {
+    const { data: vinculo, error: vinculoError } = await supabase
+      .from("negocio_vendedor_empresas")
+      .select("id")
+      .eq("negocio_id", negocio_id)
+      .eq("vendedor_empresa_id", vendedor_empresa_id)
+      .eq("ativo", true)
+      .maybeSingle();
+
+    if (vinculoError || !vinculo)
+      return { error: "Empresa nao vinculada a este negocio." };
+  }
+
   const { data, error } = await supabase
     .from("documentos")
     .insert({
       negocio_id,
       checklist_item_id,
+      vendedor_empresa_id,
       tipo_doc: itemChecklist.codigo,
       perfil: itemChecklist.perfil,
       arquivo_url,
@@ -108,6 +130,7 @@ export async function enviarDocumento(
       checklist_item_id,
       tipo_doc: itemChecklist.codigo,
       perfil: itemChecklist.perfil,
+      vendedor_empresa_id,
     },
   });
 
@@ -136,7 +159,7 @@ export async function mudarStatusDocumento(
   const { data: documento, error: documentoError } = await supabase
     .from("documentos")
     .select(
-      "id, negocio_id, status, negocios(id, tipo, papeis_negocio(papel, ativo, usuario_id))",
+      "id, negocio_id, status, vendedor_empresa_id, negocios(id, tipo, papeis_negocio(papel, ativo, usuario_id))",
     )
     .eq("id", documento_id)
     .maybeSingle();
@@ -173,6 +196,7 @@ export async function mudarStatusDocumento(
     payload: {
       status,
       negocio_id: data.negocio_id,
+      vendedor_empresa_id: documento.vendedor_empresa_id,
       motivo_reprovacao: status === "reprovado" ? motivoBruto : undefined,
     },
   });

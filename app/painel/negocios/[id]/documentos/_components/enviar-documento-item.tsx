@@ -12,10 +12,12 @@ export function EnviarDocumentoItem({
   negocioId,
   usuarioId,
   checklistItemId,
+  vendedorEmpresaId,
 }: {
   negocioId: string;
   usuarioId: string;
   checklistItemId: string;
+  vendedorEmpresaId?: string;
 }) {
   const [state, formAction, pending] = useActionState<DocumentoState, FormData>(
     enviarDocumento,
@@ -66,6 +68,13 @@ export function EnviarDocumentoItem({
         name="checklist_item_id"
         value={checklistItemId}
       />
+      {vendedorEmpresaId && (
+        <input
+          type="hidden"
+          name="vendedor_empresa_id"
+          value={vendedorEmpresaId}
+        />
+      )}
       <input type="hidden" name="arquivo_url" value={arquivoUrl} />
 
       <div className="flex flex-col gap-1">
