@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { formatBRL, rotuloStatus, variantStatus, enderecoResumido } from "./_lib";
 import { AbrirNegocioDialog } from "./_components/abrir-negocio-dialog";
+import { FollowupsExternosFila } from "./_components/followups-externos-fila";
 
 type ImovelEmbed = {
   logradouro: string | null;
@@ -23,12 +24,27 @@ type NegocioLinha = {
   imoveis: ImovelEmbed;
 };
 
+type FollowupFila = {
+  id: string;
+  negocio_id: string;
+  tipo: string;
+  prazo_em: string;
+  status: string;
+  negocios: {
+    id: string;
+    status: string;
+    imoveis: ImovelEmbed;
+  } | null;
+};
+
 export default async function NegociosPage() {
   const sessao = await getSessao();
   const supabase = await createClient();
   const podeAbrir = sessao?.papel === "admin";
+  const podeVerFilaFollowups =
+    Boolean(sessao?.isAdmin) || sessao?.papel === "corretor";
 
-  const [negociosRes, imoveisRes] = await Promise.all([
+  const [negociosRes, imoveisRes, followupsRes] = await Promise.all([
     supabase
       .from("negocios")
       .select(
@@ -41,10 +57,21 @@ export default async function NegociosPage() {
           .select("id, logradouro, numero, bairro, cidade")
           .order("logradouro", { ascending: true })
       : Promise.resolve({ data: [] as never[] }),
+    podeVerFilaFollowups
+      ? supabase
+          .from("negocio_followups_externos")
+          .select(
+            "id, negocio_id, tipo, prazo_em, status, negocios(id, status, imoveis(logradouro, numero, bairro, cidade))",
+          )
+          .eq("status", "pendente")
+          .order("prazo_em", { ascending: true })
+          .limit(6)
+      : Promise.resolve({ data: [] as never[] }),
   ]);
 
   const negocios = (negociosRes.data ?? []) as unknown as NegocioLinha[];
   const imoveis = (imoveisRes.data ?? []) as never[];
+  const followups = (followupsRes.data ?? []) as unknown as FollowupFila[];
 
   return (
     <div className="flex flex-col gap-6">
@@ -59,6 +86,8 @@ export default async function NegociosPage() {
         </div>
         {podeAbrir && <AbrirNegocioDialog imoveis={imoveis} />}
       </div>
+
+      {podeVerFilaFollowups && <FollowupsExternosFila followups={followups} />}
 
       {negociosRes.error ? (
         <p className="text-sm text-destructive">

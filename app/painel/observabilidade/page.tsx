@@ -29,6 +29,8 @@ const EVENTOS = [
   "contato_externo_aceito",
   "contato_externo_recusado",
   "contato_externo_liberado",
+  "followup_externo_criado",
+  "followup_externo_respondido",
   "papel_atribuido",
 ];
 

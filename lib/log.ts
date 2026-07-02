@@ -36,6 +36,8 @@ export type Evento =
   | "contato_externo_aceito"
   | "contato_externo_recusado"
   | "contato_externo_liberado"
+  | "followup_externo_criado"
+  | "followup_externo_respondido"
   | "contrato_gerado"
   | "contrato_assinado"
   | "comissao_registrada"

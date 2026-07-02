@@ -33,7 +33,9 @@ import { PropostasSection } from "../_components/propostas-section";
 import { AbrirConversaButton } from "../_components/abrir-conversa-button";
 import { ServicoJuridicoCard } from "../_components/servico-juridico-card";
 import { ContatoExternoCard } from "../_components/contato-externo-card";
+import { FollowupsExternosCard } from "../_components/followups-externos-card";
 import { carregarEstadoContatoExterno } from "@/lib/contato-externo-server";
+import type { FollowupExternoResumo } from "@/lib/followups-externos";
 
 type ImovelEmbed = {
   logradouro: string | null;
@@ -124,6 +126,9 @@ export default async function NegocioDetalhePage({
   const podeAtualizarServico =
     Boolean(sessao?.isAdmin) ||
     papeisUsuario.some((papel) => ["corretor", "admin"].includes(papel));
+  const podeOperarFollowups =
+    Boolean(sessao?.isAdmin) ||
+    papeisUsuario.some((papel) => ["corretor", "admin"].includes(papel));
   const tipoNegocio = negocio.tipo === "locacao" ? "locacao" : "venda";
   const contatoExterno = await carregarEstadoContatoExterno({
     negocioId: negocio.id,
@@ -131,6 +136,16 @@ export default async function NegocioDetalhePage({
     sessao,
     servicoAtivo: Boolean(servico),
   });
+  const { data: followupsData } = podeOperarFollowups
+    ? await supabase
+        .from("negocio_followups_externos")
+        .select(
+          "id, negocio_id, fluxo_id, tipo, prazo_em, status, resultado, observacao, responsavel_id, respondido_por, respondido_em, criado_em, atualizado_em",
+        )
+        .eq("negocio_id", negocio.id)
+        .order("prazo_em", { ascending: true })
+    : { data: [] };
+  const followups = (followupsData ?? []) as unknown as FollowupExternoResumo[];
 
   return (
     <div className="flex flex-col gap-6">
@@ -213,6 +228,8 @@ export default async function NegocioDetalhePage({
       {contatoExterno?.mostrar && (
         <ContatoExternoCard estado={contatoExterno} />
       )}
+
+      {podeOperarFollowups && <FollowupsExternosCard followups={followups} />}
 
       <Card>
         <CardHeader>

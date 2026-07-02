@@ -572,6 +572,12 @@ await admin.from("papeis_negocio").insert([
     papel: "proprietario",
     ativo: true,
   },
+  {
+    negocio_id: negContato.id,
+    usuario_id: corrId,
+    papel: "corretor",
+    ativo: true,
+  },
 ]);
 
 const { data: fluxoContato, error: eFluxoContato } = await comp
@@ -653,6 +659,57 @@ check(
     negContatoDepois?.status === "acompanhamento_externo",
   eAceiteProprietario?.message ??
     `fluxo=${fluxoLiberado?.status}; negocio=${negContatoDepois?.status}`,
+);
+
+const { data: followupsContato, error: eFollowupsContato } = await admin
+  .from("negocio_followups_externos")
+  .select("id, tipo, status, prazo_em")
+  .eq("negocio_id", negContato.id)
+  .order("tipo", { ascending: true });
+const tiposFollowupContato = (followupsContato ?? [])
+  .map((item) => item.tipo)
+  .sort()
+  .join(",");
+check(
+  "contato externo: cria follow-ups 7/30/45",
+  !eFollowupsContato &&
+    followupsContato?.length === 3 &&
+    tiposFollowupContato === "dia_30,dia_45,dia_7",
+  eFollowupsContato?.message ??
+    `qtd=${followupsContato?.length}; tipos=${tiposFollowupContato}`,
+);
+
+const { data: followupsFora, error: eFollowupsFora } = await fora
+  .from("negocio_followups_externos")
+  .select("id")
+  .eq("negocio_id", negContato.id);
+check(
+  "usuario externo: nao le follow-ups externos",
+  !eFollowupsFora && (followupsFora?.length ?? 0) === 0,
+  eFollowupsFora?.message ?? "follow-up externo ficou visivel",
+);
+
+const followupDia7 = (followupsContato ?? []).find((item) => item.tipo === "dia_7");
+const { error: eFollowupFechou } = await corr
+  .from("negocio_followups_externos")
+  .update({
+    status: "respondido",
+    resultado: "fechou",
+    observacao: "Smoke: negocio fechou apos contato externo.",
+    responsavel_id: corrId,
+    respondido_por: corrId,
+    respondido_em: new Date().toISOString(),
+  })
+  .eq("id", followupDia7?.id);
+const { data: negContatoConcluido } = await admin
+  .from("negocios")
+  .select("status")
+  .eq("id", negContato.id)
+  .single();
+check(
+  "corretor: follow-up fechou move negocio para concluido",
+  !eFollowupFechou && negContatoConcluido?.status === "concluido",
+  eFollowupFechou?.message ?? `status=${negContatoConcluido?.status}`,
 );
 
 const { data: imovelRecusa } = await admin
