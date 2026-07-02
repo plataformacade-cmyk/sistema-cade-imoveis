@@ -537,6 +537,190 @@ check(
   eServicoStatus?.message ?? JSON.stringify(servicoAtualizado),
 );
 
+const { data: imovelContato } = await admin
+  .from("imoveis")
+  .insert({
+    proprietario_id: propId,
+    tipo: "casa",
+    cidade: "Uberlandia",
+    bairro: "Centro",
+    valor_anuncio: 420000,
+    status: "ativo",
+  })
+  .select("id")
+  .single();
+const { data: negContato } = await admin
+  .from("negocios")
+  .insert({
+    imovel_id: imovelContato.id,
+    tipo: "venda",
+    status: "documentos",
+    criado_por: compId,
+  })
+  .select("id")
+  .single();
+await admin.from("papeis_negocio").insert([
+  {
+    negocio_id: negContato.id,
+    usuario_id: compId,
+    papel: "comprador",
+    ativo: true,
+  },
+  {
+    negocio_id: negContato.id,
+    usuario_id: propId,
+    papel: "proprietario",
+    ativo: true,
+  },
+]);
+
+const { data: fluxoContato, error: eFluxoContato } = await comp
+  .from("negocio_contato_externo_fluxos")
+  .insert({
+    negocio_id: negContato.id,
+    solicitado_por: compId,
+    termo_resumo: "Smoke fluxo sem servico contratado.",
+  })
+  .select("id, status")
+  .single();
+check(
+  "comprador: inicia fluxo sem servico contratado",
+  !eFluxoContato && fluxoContato?.status === "pendente",
+  eFluxoContato?.message ?? JSON.stringify(fluxoContato),
+);
+
+const { error: eAceiteComprador } = await comp
+  .from("negocio_contato_externo_aceites")
+  .insert({
+    fluxo_id: fluxoContato?.id,
+    negocio_id: negContato.id,
+    usuario_id: compId,
+    papel: "comprador",
+    decisao: "aceitou",
+    termo_resumo: "Smoke aceite comprador.",
+  });
+const { data: fluxoPendente } = await admin
+  .from("negocio_contato_externo_fluxos")
+  .select("status")
+  .eq("id", fluxoContato?.id)
+  .single();
+check(
+  "comprador: aceite fica pendente ate proprietario",
+  !eAceiteComprador && fluxoPendente?.status === "pendente",
+  eAceiteComprador?.message ?? `status=${fluxoPendente?.status}`,
+);
+
+const { error: eAceiteFora } = await fora
+  .from("negocio_contato_externo_aceites")
+  .insert({
+    fluxo_id: fluxoContato?.id,
+    negocio_id: negContato.id,
+    usuario_id: foraId,
+    papel: "comprador",
+    decisao: "aceitou",
+    termo_resumo: "Tentativa externa.",
+  });
+check(
+  "usuario externo: nao aceita contato externo",
+  !!eAceiteFora,
+  "aceite externo nao bloqueado",
+);
+
+const { error: eAceiteProprietario } = await prop
+  .from("negocio_contato_externo_aceites")
+  .insert({
+    fluxo_id: fluxoContato?.id,
+    negocio_id: negContato.id,
+    usuario_id: propId,
+    papel: "proprietario",
+    decisao: "aceitou",
+    termo_resumo: "Smoke aceite proprietario.",
+  });
+const { data: fluxoLiberado } = await admin
+  .from("negocio_contato_externo_fluxos")
+  .select("status")
+  .eq("id", fluxoContato?.id)
+  .single();
+const { data: negContatoDepois } = await admin
+  .from("negocios")
+  .select("status")
+  .eq("id", negContato.id)
+  .single();
+check(
+  "aceite das duas partes libera contato externo",
+  !eAceiteProprietario &&
+    fluxoLiberado?.status === "liberado" &&
+    negContatoDepois?.status === "acompanhamento_externo",
+  eAceiteProprietario?.message ??
+    `fluxo=${fluxoLiberado?.status}; negocio=${negContatoDepois?.status}`,
+);
+
+const { data: imovelRecusa } = await admin
+  .from("imoveis")
+  .insert({
+    proprietario_id: propId,
+    tipo: "casa",
+    cidade: "Uberlandia",
+    bairro: "Centro",
+    valor_anuncio: 430000,
+    status: "ativo",
+  })
+  .select("id")
+  .single();
+const { data: negRecusa } = await admin
+  .from("negocios")
+  .insert({
+    imovel_id: imovelRecusa.id,
+    tipo: "venda",
+    status: "documentos",
+    criado_por: compId,
+  })
+  .select("id")
+  .single();
+await admin.from("papeis_negocio").insert([
+  {
+    negocio_id: negRecusa.id,
+    usuario_id: compId,
+    papel: "comprador",
+    ativo: true,
+  },
+  {
+    negocio_id: negRecusa.id,
+    usuario_id: propId,
+    papel: "proprietario",
+    ativo: true,
+  },
+]);
+const { data: fluxoRecusa } = await prop
+  .from("negocio_contato_externo_fluxos")
+  .insert({
+    negocio_id: negRecusa.id,
+    solicitado_por: propId,
+    termo_resumo: "Smoke recusa contato externo.",
+  })
+  .select("id")
+  .single();
+const { error: eRecusa } = await prop
+  .from("negocio_contato_externo_aceites")
+  .insert({
+    fluxo_id: fluxoRecusa?.id,
+    negocio_id: negRecusa.id,
+    usuario_id: propId,
+    papel: "proprietario",
+    decisao: "recusou",
+    termo_resumo: "Smoke recusa proprietario.",
+  });
+const { data: fluxoRecusado } = await admin
+  .from("negocio_contato_externo_fluxos")
+  .select("status")
+  .eq("id", fluxoRecusa?.id)
+  .single();
+check(
+  "recusa de uma parte encerra sem liberar contato",
+  !eRecusa && fluxoRecusado?.status === "recusado",
+  eRecusa?.message ?? `status=${fluxoRecusado?.status}`,
+);
+
 const { error: eCom } = await comp.from("comissoes").insert({
   negocio_id: negId,
   percentual: 6,

@@ -32,6 +32,8 @@ import { AtribuirParticipanteForm } from "../_components/atribuir-participante-f
 import { PropostasSection } from "../_components/propostas-section";
 import { AbrirConversaButton } from "../_components/abrir-conversa-button";
 import { ServicoJuridicoCard } from "../_components/servico-juridico-card";
+import { ContatoExternoCard } from "../_components/contato-externo-card";
+import { carregarEstadoContatoExterno } from "@/lib/contato-externo-server";
 
 type ImovelEmbed = {
   logradouro: string | null;
@@ -123,6 +125,12 @@ export default async function NegocioDetalhePage({
     Boolean(sessao?.isAdmin) ||
     papeisUsuario.some((papel) => ["corretor", "admin"].includes(papel));
   const tipoNegocio = negocio.tipo === "locacao" ? "locacao" : "venda";
+  const contatoExterno = await carregarEstadoContatoExterno({
+    negocioId: negocio.id,
+    statusNegocio: negocio.status,
+    sessao,
+    servicoAtivo: Boolean(servico),
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -200,6 +208,10 @@ export default async function NegocioDetalhePage({
           podeContratar={podeContratarServico}
           podeAtualizarStatus={podeAtualizarServico}
         />
+      )}
+
+      {contatoExterno?.mostrar && (
+        <ContatoExternoCard estado={contatoExterno} />
       )}
 
       <Card>

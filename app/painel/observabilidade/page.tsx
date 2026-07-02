@@ -26,6 +26,9 @@ const EVENTOS = [
   "mensagem_contato_bloqueado",
   "servico_juridico_contratado",
   "servico_juridico_status_mudado",
+  "contato_externo_aceito",
+  "contato_externo_recusado",
+  "contato_externo_liberado",
   "papel_atribuido",
 ];
 

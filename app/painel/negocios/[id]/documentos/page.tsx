@@ -22,6 +22,8 @@ import { getSessao } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { enderecoResumido } from "../../_lib";
 import { ServicoJuridicoCard } from "../../_components/servico-juridico-card";
+import { ContatoExternoCard } from "../../_components/contato-externo-card";
+import { carregarEstadoContatoExterno } from "@/lib/contato-externo-server";
 import { EnviarDocumentoItem } from "./_components/enviar-documento-item";
 import {
   CadastrarEmpresaVendedorForm,
@@ -355,6 +357,12 @@ export default async function DocumentosPage({
   const podeAtualizarServico =
     Boolean(sessao?.isAdmin) ||
     papeisUsuarioAtivos.some((p) => ["corretor", "admin"].includes(p.papel));
+  const contatoExterno = await carregarEstadoContatoExterno({
+    negocioId: negocio.id,
+    statusNegocio: negocio.status,
+    sessao,
+    servicoAtivo: Boolean(servico),
+  });
 
   const linksAssinados = new Map<string, string>();
   await Promise.all(
@@ -415,6 +423,10 @@ export default async function DocumentosPage({
           podeContratar={podeContratarServico}
           podeAtualizarStatus={podeAtualizarServico}
         />
+      )}
+
+      {contatoExterno?.mostrar && (
+        <ContatoExternoCard estado={contatoExterno} />
       )}
 
       <Card>

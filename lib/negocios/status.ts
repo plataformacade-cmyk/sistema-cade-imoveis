@@ -7,6 +7,7 @@ export const STATUS_NEGOCIO_OPCOES = [
   { value: "documentos", label: "Documentos" },
   { value: "contrato", label: "Contrato" },
   { value: "cartorial", label: "Cartorial" },
+  { value: "acompanhamento_externo", label: "Acompanhamento externo" },
   { value: "concluido", label: "Concluído" },
   { value: "perdido", label: "Perdido" },
 ] as const;
@@ -44,6 +45,7 @@ export function variantStatusNegocio(status: string): StatusVariant {
     case "documentos":
     case "contrato":
     case "cartorial":
+    case "acompanhamento_externo":
       return "secondary";
     default:
       return "outline";

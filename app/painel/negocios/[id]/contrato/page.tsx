@@ -19,6 +19,8 @@ import { GerarContratoButton } from "./_components/gerar-contrato-button";
 import { MarcarAssinadoForm } from "./_components/marcar-assinado-form";
 import { ImprimirButton } from "./_components/imprimir-button";
 import { ServicoJuridicoCard } from "../../_components/servico-juridico-card";
+import { ContatoExternoCard } from "../../_components/contato-externo-card";
+import { carregarEstadoContatoExterno } from "@/lib/contato-externo-server";
 
 type ImovelEmbed = {
   logradouro: string | null;
@@ -176,6 +178,12 @@ export default async function ContratoPage({
     Boolean(sessao?.isAdmin) ||
     papeis.some((papel) => ["corretor", "admin"].includes(papel));
   const tipoNegocio = negocio.tipo === "locacao" ? "locacao" : "venda";
+  const contatoExterno = await carregarEstadoContatoExterno({
+    negocioId: negocio.id,
+    statusNegocio: negocio.status,
+    sessao,
+    servicoAtivo: Boolean(servico),
+  });
 
   const padroes = defaultsComissao(negocio.tipo);
   // Base de cálculo padrão = valor acordado (ou, na falta, o valor de anúncio).
@@ -235,6 +243,12 @@ export default async function ContratoPage({
             podeContratar={podeContratarServico}
             podeAtualizarStatus={podeAtualizarServico}
           />
+        </div>
+      )}
+
+      {contatoExterno?.mostrar && (
+        <div className="print:hidden">
+          <ContatoExternoCard estado={contatoExterno} />
         </div>
       )}
 
