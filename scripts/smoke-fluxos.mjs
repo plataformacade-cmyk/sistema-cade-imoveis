@@ -56,6 +56,17 @@ const { data: negId, error: eInt } = await comp.rpc("demonstrar_interesse", {
 });
 check("RPC interesse", !eInt && negId, eInt?.message);
 
+const { data: negCriado } = await admin
+  .from("negocios")
+  .select("status")
+  .eq("id", negId)
+  .single();
+check(
+  "RPC interesse cria negocio em qualificacao",
+  negCriado?.status === "qualificacao",
+  `status=${negCriado?.status}`,
+);
+
 const { data: conv } = await admin
   .from("conversas")
   .select("id")

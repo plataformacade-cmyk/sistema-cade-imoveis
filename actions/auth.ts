@@ -1,6 +1,11 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import {
+  CADASTRO_NEXT_PADRAO,
+  ehDestinoInteresse,
+  resolverAuthNext,
+} from "@/lib/auth-redirect";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -33,12 +38,13 @@ export async function login(
   const supabase = await createClient();
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
+  const next = resolverAuthNext(String(formData.get("next") ?? ""), "/painel");
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: traduzErro(error.message) };
 
   revalidatePath("/", "layout");
-  redirect("/painel");
+  redirect(next);
 }
 
 export async function signup(
@@ -49,6 +55,11 @@ export async function signup(
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
   const nome = String(formData.get("nome") ?? "");
+  const next = resolverAuthNext(
+    String(formData.get("next") ?? ""),
+    CADASTRO_NEXT_PADRAO,
+  );
+  const destino = ehDestinoInteresse(next) ? next : CADASTRO_NEXT_PADRAO;
 
   if (password.length < 8)
     return { error: "A senha precisa ter ao menos 8 caracteres." };
@@ -65,7 +76,7 @@ export async function signup(
   // sessão. Loga direto e leva ao onboarding (escolher buscar × anunciar).
   if (data.session) {
     revalidatePath("/", "layout");
-    redirect("/cadastro/completar");
+    redirect(destino);
   }
 
   // Fallback (se algum dia ligarem a confirmação por e-mail).

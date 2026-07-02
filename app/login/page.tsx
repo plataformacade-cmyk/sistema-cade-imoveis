@@ -1,24 +1,36 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { Suspense, useActionState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { login, type AuthState } from "@/actions/auth";
 import { GoogleAuthButton } from "@/components/publico/google-auth-button";
+import {
+  criarCadastroHref,
+  ehDestinoInteresse,
+  resolverAuthNext,
+} from "@/lib/auth-redirect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AuthShell } from "@/components/publico/auth-shell";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const [state, formAction, pending] = useActionState<AuthState, FormData>(
     login,
     {},
   );
-  const [erroOAuth, setErroOAuth] = useState(false);
-
-  useEffect(() => {
-    setErroOAuth(new URLSearchParams(location.search).get("erro") === "auth");
-  }, []);
+  const searchParams = useSearchParams();
+  const erroOAuth = searchParams.get("erro") === "auth";
+  const nextSeguro = resolverAuthNext(searchParams.get("next"), "/painel");
 
   return (
     <AuthShell
@@ -33,7 +45,13 @@ export default function LoginPage() {
           </p>
         )}
 
-        <GoogleAuthButton next="/painel" />
+        {ehDestinoInteresse(nextSeguro) && (
+          <p className="rounded-md border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary">
+            Entre para registrar seu interesse neste imóvel.
+          </p>
+        )}
+
+        <GoogleAuthButton next={nextSeguro} />
 
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="h-px flex-1 bg-border" />
@@ -42,6 +60,7 @@ export default function LoginPage() {
         </div>
 
         <form action={formAction} className="flex flex-col gap-4">
+          <input type="hidden" name="next" value={nextSeguro} />
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">E-mail</Label>
             <Input id="email" name="email" type="email" required />
@@ -68,7 +87,10 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-muted-foreground">
           Não tem conta?{" "}
-          <Link href="/cadastro" className="font-medium text-primary hover:underline">
+          <Link
+            href={criarCadastroHref(nextSeguro)}
+            className="font-medium text-primary hover:underline"
+          >
             Criar conta
           </Link>
         </p>

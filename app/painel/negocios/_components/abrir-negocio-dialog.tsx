@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { Plus } from "lucide-react";
 import { abrirNegocio, type NegocioState } from "@/actions/negocios";
+import { STATUS_NEGOCIO_PADRAO } from "@/lib/negocios/status";
 import { STATUS_OPCOES, enderecoResumido } from "../_lib";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,8 +36,18 @@ type ImovelOpcao = {
 
 export function AbrirNegocioDialog({ imoveis }: { imoveis: ImovelOpcao[] }) {
   const [open, setOpen] = useState(false);
+
+  async function abrirNegocioEFechar(
+    prev: NegocioState,
+    formData: FormData,
+  ): Promise<NegocioState> {
+    const resultado = await abrirNegocio(prev, formData);
+    if (resultado.message) setOpen(false);
+    return resultado;
+  }
+
   const [state, formAction, pending] = useActionState<NegocioState, FormData>(
-    abrirNegocio,
+    abrirNegocioEFechar,
     {},
   );
 
@@ -44,11 +55,6 @@ export function AbrirNegocioDialog({ imoveis }: { imoveis: ImovelOpcao[] }) {
     value: im.id,
     label: enderecoResumido(im),
   }));
-
-  // Fecha o diálogo quando a ação concluir com sucesso.
-  useEffect(() => {
-    if (state.message) setOpen(false);
-  }, [state.message]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -95,7 +101,7 @@ export function AbrirNegocioDialog({ imoveis }: { imoveis: ImovelOpcao[] }) {
             <Label htmlFor="status">Status</Label>
             <Select
               name="status"
-              defaultValue="aberto"
+              defaultValue={STATUS_NEGOCIO_PADRAO}
               items={STATUS_OPCOES as unknown as { value: string; label: string }[]}
               required
             >

@@ -1,24 +1,40 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { Suspense, useActionState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { signup, type AuthState } from "@/actions/auth";
 import { GoogleAuthButton } from "@/components/publico/google-auth-button";
+import {
+  CADASTRO_NEXT_PADRAO,
+  criarLoginHref,
+  ehDestinoInteresse,
+  resolverAuthNext,
+} from "@/lib/auth-redirect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AuthShell } from "@/components/publico/auth-shell";
 
 export default function CadastroPage() {
+  return (
+    <Suspense fallback={null}>
+      <CadastroForm />
+    </Suspense>
+  );
+}
+
+function CadastroForm() {
   const [state, formAction, pending] = useActionState<AuthState, FormData>(
     signup,
     {},
   );
-  const [erroOAuth, setErroOAuth] = useState(false);
-
-  useEffect(() => {
-    setErroOAuth(new URLSearchParams(location.search).get("erro") === "auth");
-  }, []);
+  const searchParams = useSearchParams();
+  const erroOAuth = searchParams.get("erro") === "auth";
+  const nextSeguro = resolverAuthNext(
+    searchParams.get("next"),
+    CADASTRO_NEXT_PADRAO,
+  );
 
   return (
     <AuthShell
@@ -34,9 +50,13 @@ export default function CadastroPage() {
           </p>
         )}
 
-        <GoogleAuthButton next="/cadastro/completar">
-          Criar conta com o Google
-        </GoogleAuthButton>
+        {ehDestinoInteresse(nextSeguro) && (
+          <p className="rounded-md border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary">
+            Crie sua conta para registrar interesse neste imóvel.
+          </p>
+        )}
+
+        <GoogleAuthButton next={nextSeguro}>Criar conta com o Google</GoogleAuthButton>
 
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="h-px flex-1 bg-border" />
@@ -45,6 +65,7 @@ export default function CadastroPage() {
         </div>
 
         <form action={formAction} className="flex flex-col gap-4">
+          <input type="hidden" name="next" value={nextSeguro} />
           <div className="flex flex-col gap-2">
             <Label htmlFor="nome">Nome</Label>
             <Input id="nome" name="nome" type="text" required />
@@ -77,7 +98,10 @@ export default function CadastroPage() {
 
       <p className="mt-4 text-center text-sm text-muted-foreground">
         Já tem conta?{" "}
-        <Link href="/login" className="font-medium text-primary hover:underline">
+        <Link
+          href={criarLoginHref(nextSeguro)}
+          className="font-medium text-primary hover:underline"
+        >
           Entrar
         </Link>
       </p>

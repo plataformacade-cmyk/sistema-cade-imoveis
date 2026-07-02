@@ -1,11 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import { criarLoginHref, resolverAuthNext } from "@/lib/auth-redirect";
 import { NextResponse } from "next/server";
 
 // Callback do OAuth (Google) e da confirmacao de e-mail.
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = resolverDestino(searchParams.get("next"));
+  const next = resolverAuthNext(searchParams.get("next"), "/painel");
 
   if (code) {
     try {
@@ -24,12 +25,9 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?erro=auth`);
-}
-
-function resolverDestino(next: string | null) {
-  if (next === "/cadastro/completar") return next;
-  return "/painel";
+  const destinoErro = new URL(criarLoginHref(next), origin);
+  destinoErro.searchParams.set("erro", "auth");
+  return NextResponse.redirect(destinoErro);
 }
 
 function serializarErro(error: unknown) {

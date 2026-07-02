@@ -80,7 +80,7 @@ async function main() {
     let negId = negExist?.[0]?.id;
     if (!negId) {
       const { data: neg, error } = await sb.from("negocios")
-        .insert({ imovel_id: imA.id, status: "em_negociacao", criado_por: id.cliente })
+        .insert({ imovel_id: imA.id, status: "visita", criado_por: id.cliente })
         .select("id").single();
       if (error) throw new Error("negocio: " + error.message);
       negId = neg.id;

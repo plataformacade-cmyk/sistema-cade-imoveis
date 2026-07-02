@@ -3,11 +3,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSessao } from "@/lib/auth";
 import { registrarEvento } from "@/lib/log";
+import {
+  isStatusNegocio,
+  STATUS_NEGOCIO_PADRAO,
+} from "@/lib/negocios/status";
 import { revalidatePath } from "next/cache";
 
 export type NegocioState = { error?: string; message?: string };
 
-const STATUS_VALIDOS = ["aberto", "em_negociacao", "fechado", "cancelado"];
 const PAPEIS_VALIDOS = ["proprietario", "comprador", "corretor"];
 
 /**
@@ -23,11 +26,11 @@ export async function abrirNegocio(
   if (!sessao) return { error: "Sessão expirada. Entre novamente." };
 
   const imovel_id = String(formData.get("imovel_id") ?? "");
-  const status = String(formData.get("status") ?? "aberto");
+  const status = String(formData.get("status") ?? STATUS_NEGOCIO_PADRAO);
   const valorBruto = String(formData.get("valor_acordado") ?? "").trim();
 
   if (!imovel_id) return { error: "Selecione um imóvel." };
-  if (!STATUS_VALIDOS.includes(status)) return { error: "Status inválido." };
+  if (!isStatusNegocio(status)) return { error: "Status inválido." };
 
   let valor_acordado: number | null = null;
   if (valorBruto !== "") {
@@ -109,7 +112,7 @@ export async function mudarStatus(
   const status = String(formData.get("status") ?? "");
 
   if (!negocio_id) return { error: "Negócio não identificado." };
-  if (!STATUS_VALIDOS.includes(status)) return { error: "Status inválido." };
+  if (!isStatusNegocio(status)) return { error: "Status inválido." };
 
   const supabase = await createClient();
   const { error } = await supabase

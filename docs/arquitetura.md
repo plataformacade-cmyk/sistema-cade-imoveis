@@ -23,7 +23,7 @@ auth.users 1—1 usuarios (papel)
               ├─ 1—N imoveis (proprietario_id)          imoveis 1—N (fotos[], caracteristicas jsonb, endereco, status)
               ├─ 1—1 corretores (creci)                 imoveis N—1 imobiliarias (opcional)
               └─ N—N negocios via papeis_negocio
-negocios (imovel_id, status: aberto|em_negociacao|fechado|cancelado)
+negocios (imovel_id, status: qualificacao|visita|proposta|documentos|contrato|cartorial|concluido|perdido)
    ├─ papeis_negocio (usuario_id, papel: proprietario|comprador|corretor|admin)  ← multi-papel canônico
    ├─ conversas 1—N mensagens (autor_id, corpo, lida_em)
    ├─ propostas (autor_id, valor, status: enviada|aceita|recusada|contraproposta)
@@ -74,9 +74,20 @@ GitHub Actions (cron 3x/dia)
 ```
 Blog é **file-based/SSG** (melhor p/ SEO; IA não roda JS). Detalhe em `scripts/AGENTE-CONTEUDO.md`.
 
+## 6.1 Secrets e ambientes
+
+O inventario canonico de variaveis fica em `docs/secrets.md`; o template sem valores fica em `.env.example`.
+
+Regras:
+
+- Valores reais ficam em `.env.local`, Vercel Environment Variables, GitHub Actions Secrets ou dashboards externos.
+- `SUPABASE_SERVICE_ROLE_KEY` e tokens de operacao nunca podem ser expostos como `NEXT_PUBLIC_*`.
+- O workflow de conteudo atual so sai de dry-run quando `OPENAI_API_KEY` e `IDEOGRAM_API_KEY` existem no GitHub Actions.
+- Hermes, Perplexity e Higgsfield estao mapeados como variaveis futuras ate as tasks especificas alterarem o runtime.
+
 ## 7. Pendências priorizadas (próximas)
 
 1. **Painel "board" por perfil** (cliente: Negociações como kanban — interesse → conversa → proposta → visita; clicar abre imóvel + histórico). Onboarding pós-cadastro.
 2. **Notificações** para os dois lados (novo interesse, nova mensagem, proposta) — tabela `notificacoes` + badge no painel + e-mail (Resend).
-3. **Dashboard-01 (shadcn)** no painel + **ícones animados** — dependem do MCP do shadcn (reiniciar o Claude Code).
+3. **Dashboard-01 (shadcn)** no painel + **ícones animados** — próximos ajustes de UI.
 4. **Externos:** Google OAuth, Resend, domínio, identidade final (Fernando), termos (Luiz).

@@ -3,10 +3,11 @@
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { resolverAuthNext } from "@/lib/auth-redirect";
 import { Button } from "@/components/ui/button";
 
 type GoogleAuthButtonProps = {
-  next: "/painel" | "/cadastro/completar";
+  next?: string;
   children?: ReactNode;
 };
 
@@ -34,12 +35,12 @@ function GoogleIcon() {
 }
 
 export function GoogleAuthButton({
-  next,
+  next = "/painel",
   children = "Continuar com o Google",
 }: GoogleAuthButtonProps) {
   async function autenticarComGoogle() {
     const redirectUrl = new URL("/auth/callback", location.origin);
-    redirectUrl.searchParams.set("next", next);
+    redirectUrl.searchParams.set("next", resolverAuthNext(next, "/painel"));
 
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({

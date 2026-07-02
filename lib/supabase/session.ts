@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { resolverAuthNext } from "@/lib/auth-redirect";
 import { getSupabaseEnv } from "./env";
 
 const AUTH_PAGES = ["/login", "/cadastro", "/recuperar-senha"];
@@ -49,7 +50,12 @@ export async function updateSession(request: NextRequest) {
 
   if (user && isAuthPage) {
     const url = request.nextUrl.clone();
-    url.pathname = "/painel";
+    const destino = resolverAuthNext(
+      request.nextUrl.searchParams.get("next"),
+      "/painel",
+    );
+    url.pathname = destino.split("?")[0];
+    url.search = destino.includes("?") ? `?${destino.split("?")[1]}` : "";
     return NextResponse.redirect(url);
   }
 

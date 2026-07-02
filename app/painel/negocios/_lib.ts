@@ -1,11 +1,11 @@
-// Rótulos e formatadores compartilhados da área de Negócios.
+import {
+  rotuloStatusNegocio,
+  STATUS_NEGOCIO_OPCOES,
+  variantStatusNegocio,
+  type StatusVariant,
+} from "@/lib/negocios/status";
 
-export const STATUS_OPCOES = [
-  { value: "aberto", label: "Aberto" },
-  { value: "em_negociacao", label: "Em negociação" },
-  { value: "fechado", label: "Fechado" },
-  { value: "cancelado", label: "Cancelado" },
-] as const;
+export const STATUS_OPCOES = STATUS_NEGOCIO_OPCOES;
 
 export const PAPEL_OPCOES = [
   { value: "proprietario", label: "Proprietário" },
@@ -14,30 +14,17 @@ export const PAPEL_OPCOES = [
 ] as const;
 
 export function rotuloStatus(status: string): string {
-  return STATUS_OPCOES.find((s) => s.value === status)?.label ?? status;
+  return rotuloStatusNegocio(status);
 }
 
 export function rotuloPapel(papel: string): string {
   return PAPEL_OPCOES.find((p) => p.value === papel)?.label ?? papel;
 }
 
-export type StatusVariant =
-  | "default"
-  | "secondary"
-  | "destructive"
-  | "outline";
+export type { StatusVariant };
 
 export function variantStatus(status: string): StatusVariant {
-  switch (status) {
-    case "fechado":
-      return "default";
-    case "em_negociacao":
-      return "secondary";
-    case "cancelado":
-      return "destructive";
-    default:
-      return "outline";
-  }
+  return variantStatusNegocio(status);
 }
 
 const fmtBRL = new Intl.NumberFormat("pt-BR", {
@@ -56,7 +43,7 @@ export function enderecoResumido(imovel: {
   bairro?: string | null;
   cidade?: string | null;
 } | null): string {
-  if (!imovel) return "—";
+  if (!imovel) return "-";
   const linha1 = [imovel.logradouro, imovel.numero]
     .filter(Boolean)
     .join(", ");
