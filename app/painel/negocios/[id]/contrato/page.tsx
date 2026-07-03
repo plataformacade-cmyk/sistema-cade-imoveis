@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import {
+  ArrowLeft,
+  AlertTriangle,
+  CheckCircle2,
+  FileText,
+  Receipt,
+} from "lucide-react";
 import { getSessao } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
@@ -16,11 +22,20 @@ import { formatBRL, enderecoResumido } from "../../_lib";
 import { LIMITE_ESCRITURA, SALARIO_MINIMO } from "@/lib/contrato";
 import { ComissaoForm } from "./_components/comissao-form";
 import { GerarContratoButton } from "./_components/gerar-contrato-button";
-import { MarcarAssinadoForm } from "./_components/marcar-assinado-form";
 import { ImprimirButton } from "./_components/imprimir-button";
+import { AssinarContratoButton } from "./_components/assinar-contrato-button";
+import { RevisarContratoForm } from "./_components/revisar-contrato-form";
+import { UploadContratoArquivoForm } from "./_components/upload-contrato-arquivo-form";
 import { ServicoJuridicoCard } from "../../_components/servico-juridico-card";
 import { ContatoExternoCard } from "../../_components/contato-externo-card";
 import { carregarEstadoContatoExterno } from "@/lib/contato-externo-server";
+import { EnviarDocumentoItem } from "../documentos/_components/enviar-documento-item";
+import { StatusDocumentoButtons } from "../documentos/_components/status-documento-buttons";
+import {
+  rotuloStatusDoc,
+  statusAgregado,
+  variantStatusDoc,
+} from "../documentos/_lib";
 
 type ImovelEmbed = {
   logradouro: string | null;
@@ -30,6 +45,16 @@ type ImovelEmbed = {
   valor_anuncio: number | null;
 } | null;
 
+type ParticipanteEmbed = {
+  papel: string;
+  ativo: boolean;
+  usuario_id: string;
+  usuarios?: {
+    nome: string | null;
+    email: string | null;
+  } | null;
+};
+
 type NegocioContrato = {
   id: string;
   imovel_id: string | null;
@@ -38,6 +63,7 @@ type NegocioContrato = {
   valor_acordado: number | null;
   escritura_publica: boolean;
   imoveis: ImovelEmbed;
+  papeis_negocio: ParticipanteEmbed[];
 };
 
 type ComissaoLinha = {
@@ -54,16 +80,64 @@ type ContratoLinha = {
   id: string;
   tipo: string | null;
   url_pdf: string | null;
+  arquivo_url: string | null;
+  arquivo_nome: string | null;
   status: string;
+  versao: number;
   gerado_em: string | null;
   assinado_em: string | null;
   criado_em: string | null;
+  revisado_em: string | null;
+  motivo_reprovacao: string | null;
+  termo_resumo: string | null;
+};
+
+type AssinaturaLinha = {
+  id: string;
+  papel: "comprador" | "proprietario";
+  usuario_id: string;
+  versao: number;
+  assinado_em: string | null;
+  usuarios?: {
+    nome: string | null;
+    email: string | null;
+  } | null;
+};
+
+type ChecklistItem = {
+  id: string;
+  titulo: string;
+  descricao: string | null;
+  obrigatorio: boolean;
+};
+
+type DocumentoPix = {
+  id: string;
+  arquivo_url: string;
+  status: string;
+  motivo_reprovacao: string | null;
+  criado_em: string | null;
+  revisado_em: string | null;
 };
 
 const CONTRATO_ROTULOS: Record<string, string> = {
   rascunho: "Rascunho",
   gerado: "Gerado",
+  pendente_assinaturas: "Pendente de assinaturas",
   assinado: "Assinado",
+  validado: "Validado",
+  reprovado: "Reprovado",
+  cancelado: "Cancelado",
+};
+
+const CONTRATO_VARIANTS: Record<
+  string,
+  "default" | "secondary" | "outline" | "destructive"
+> = {
+  assinado: "secondary",
+  validado: "default",
+  reprovado: "destructive",
+  cancelado: "outline",
 };
 
 const fmtDataHora = new Intl.DateTimeFormat("pt-BR", {
@@ -75,23 +149,105 @@ const fmtDataHora = new Intl.DateTimeFormat("pt-BR", {
 });
 
 function formatDataHora(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "-";
   return fmtDataHora.format(d);
 }
 
-/**
- * Defaults de comissão por tipo de negócio (vindos da pesquisa):
- * - venda urbana: 6% sobre o valor acordado;
- * - locação: equivale a 1 aluguel → 100% sobre o valor acordado (o aluguel).
- */
 function defaultsComissao(tipo: string | null): {
   percentual: number;
   pagador: string;
 } {
   if (tipo === "locacao") return { percentual: 100, pagador: "proprietario" };
   return { percentual: 6, pagador: "proprietario" };
+}
+
+function nomeParticipante(participante: ParticipanteEmbed | AssinaturaLinha) {
+  return (
+    participante.usuarios?.nome ??
+    participante.usuarios?.email ??
+    "Participante"
+  );
+}
+
+function participantesPorPapel(
+  papeis: ParticipanteEmbed[],
+  papel: "comprador" | "proprietario",
+) {
+  return papeis.filter((p) => p.ativo && p.papel === papel);
+}
+
+function assinaturaPorPapel(
+  assinaturas: AssinaturaLinha[],
+  papel: "comprador" | "proprietario",
+) {
+  return assinaturas.find((a) => a.papel === papel) ?? null;
+}
+
+function papeisUsuarioAtivos(
+  papeis: ParticipanteEmbed[],
+  usuarioId: string | undefined,
+) {
+  if (!usuarioId) return [];
+  return papeis.filter((p) => p.ativo && p.usuario_id === usuarioId);
+}
+
+function usuarioPodeAssinarPapel(
+  papeis: ParticipanteEmbed[],
+  usuarioId: string | undefined,
+  papel: "comprador" | "proprietario",
+) {
+  if (!usuarioId) return false;
+  return papeis.some(
+    (p) => p.ativo && p.usuario_id === usuarioId && p.papel === papel,
+  );
+}
+
+function estadoOperacional(
+  contrato: ContratoLinha | null,
+  statusPix: string,
+): { label: string; detalhe: string } {
+  if (!contrato) {
+    return {
+      label: "Pendente de contrato",
+      detalhe: "Gere a primeira versao do contrato para iniciar assinaturas.",
+    };
+  }
+  if (contrato.status === "reprovado") {
+    return {
+      label: "Reprovado",
+      detalhe: contrato.motivo_reprovacao ?? "Revise o motivo informado.",
+    };
+  }
+  if (contrato.status === "validado") {
+    return {
+      label: "Validado",
+      detalhe: "Contrato validado pela operacao.",
+    };
+  }
+  if (contrato.status !== "assinado") {
+    return {
+      label: "Pendente de assinatura",
+      detalhe: "Comprador e proprietario precisam registrar aceite interno.",
+    };
+  }
+  if (statusPix === "pendente") {
+    return {
+      label: "Pendente de comprovante",
+      detalhe: "Anexe o comprovante de sinal/Pix quando houver.",
+    };
+  }
+  if (statusPix === "reprovado") {
+    return {
+      label: "Comprovante reprovado",
+      detalhe: "Envie novo comprovante ou revise a justificativa.",
+    };
+  }
+  return {
+    label: "Em revisao",
+    detalhe: "Contrato assinado e comprovante pronto para revisao operacional.",
+  };
 }
 
 export default async function ContratoPage({
@@ -107,7 +263,7 @@ export default async function ContratoPage({
     supabase
       .from("negocios")
       .select(
-        "id, imovel_id, tipo, status, valor_acordado, escritura_publica, imoveis(logradouro, numero, bairro, cidade, valor_anuncio)",
+        "id, imovel_id, tipo, status, valor_acordado, escritura_publica, imoveis(logradouro, numero, bairro, cidade, valor_anuncio), papeis_negocio(papel, ativo, usuario_id, usuarios(nome, email))",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -123,10 +279,10 @@ export default async function ContratoPage({
     supabase
       .from("contratos")
       .select(
-        "id, tipo, url_pdf, status, gerado_em, assinado_em, criado_em",
+        "id, tipo, url_pdf, arquivo_url, arquivo_nome, status, versao, gerado_em, assinado_em, criado_em, revisado_em, motivo_reprovacao, termo_resumo",
       )
       .eq("negocio_id", id)
-      .order("criado_em", { ascending: false })
+      .order("versao", { ascending: false })
       .limit(1)
       .maybeSingle(),
   ]);
@@ -134,7 +290,7 @@ export default async function ContratoPage({
   if (negocioRes.error) {
     return (
       <p className="text-destructive text-sm">
-        Não foi possível carregar o negócio.
+        Nao foi possivel carregar o negocio.
       </p>
     );
   }
@@ -143,41 +299,79 @@ export default async function ContratoPage({
   const negocio = negocioRes.data as unknown as NegocioContrato;
   const comissao = (comissaoRes.data ?? null) as ComissaoLinha | null;
   const contrato = (contratoRes.data ?? null) as ContratoLinha | null;
-  const [{ data: papeisUsuario }, { data: servicos }] = await Promise.all([
-    supabase
-      .from("papeis_negocio")
-      .select("papel")
-      .eq("negocio_id", negocio.id)
-      .eq("usuario_id", sessao?.user.id ?? "")
-      .eq("ativo", true),
-    negocio.imovel_id
-      ? supabase
-          .from("servicos_juridicos_contratacoes")
-          .select(
-            "id, pacote, status, tipo_negocio, origem, criado_em, negocio_id",
-          )
-          .eq("imovel_id", negocio.imovel_id)
-          .in("status", ["contratado", "em_atendimento"])
-          .order("criado_em", { ascending: false })
-      : Promise.resolve({ data: [], error: null }),
-  ]);
+  const tipoNegocio = negocio.tipo === "locacao" ? "locacao" : "venda";
+
+  const [assinaturasRes, pixItemRes, pixDocsRes, servicosRes] =
+    await Promise.all([
+      contrato
+        ? supabase
+            .from("contrato_assinaturas")
+            .select("id, papel, usuario_id, versao, assinado_em, usuarios(nome, email)")
+            .eq("contrato_id", contrato.id)
+            .order("assinado_em", { ascending: true })
+        : Promise.resolve({ data: [], error: null }),
+      supabase
+        .from("documentos_checklist_itens")
+        .select("id, titulo, descricao, obrigatorio")
+        .eq("ativo", true)
+        .eq("perfil", "contrato_minuta")
+        .eq("codigo", "minuta_comprovante_sinal")
+        .in("tipo_negocio", [tipoNegocio, "ambos"])
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("documentos")
+        .select(
+          "id, arquivo_url, status, motivo_reprovacao, criado_em, revisado_em",
+        )
+        .eq("negocio_id", id)
+        .eq("tipo_doc", "minuta_comprovante_sinal")
+        .order("criado_em", { ascending: false }),
+      negocio.imovel_id
+        ? supabase
+            .from("servicos_juridicos_contratacoes")
+            .select(
+              "id, pacote, status, tipo_negocio, origem, criado_em, negocio_id",
+            )
+            .eq("imovel_id", negocio.imovel_id)
+            .in("status", ["contratado", "em_atendimento"])
+            .order("criado_em", { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+  if (assinaturasRes.error || pixDocsRes.error || servicosRes.error) {
+    return (
+      <p className="text-destructive text-sm">
+        Nao foi possivel carregar o contrato.
+      </p>
+    );
+  }
+
+  const assinaturas = (assinaturasRes.data ?? []) as unknown as AssinaturaLinha[];
+  const pixItem = (pixItemRes.data ?? null) as ChecklistItem | null;
+  const pixDocs = (pixDocsRes.data ?? []) as unknown as DocumentoPix[];
+  const servicos = servicosRes.data ?? [];
   const servico =
-    servicos?.find((item) => item.negocio_id === negocio.id) ??
-    servicos?.[0] ??
+    servicos.find((item) => item.negocio_id === negocio.id) ??
+    servicos[0] ??
     null;
-  const papeis = (papeisUsuario ?? []).map((p) => String(p.papel));
+
+  const papeisUsuario = papeisUsuarioAtivos(
+    negocio.papeis_negocio ?? [],
+    sessao?.user.id,
+  );
   const usuarioPodeOperar =
     Boolean(sessao?.isAdmin) ||
-    papeis.some((papel) =>
-      ["proprietario", "corretor", "admin"].includes(papel),
+    papeisUsuario.some((p) =>
+      ["proprietario", "corretor", "admin"].includes(p.papel),
     );
+  const podeRevisar =
+    Boolean(sessao?.isAdmin) ||
+    papeisUsuario.some((p) => ["corretor", "admin"].includes(p.papel));
   const podeContratarServico =
     usuarioPodeOperar &&
     ["documentos", "contrato", "cartorial"].includes(negocio.status);
-  const podeAtualizarServico =
-    Boolean(sessao?.isAdmin) ||
-    papeis.some((papel) => ["corretor", "admin"].includes(papel));
-  const tipoNegocio = negocio.tipo === "locacao" ? "locacao" : "venda";
+  const podeAtualizarServico = podeRevisar;
   const contatoExterno = await carregarEstadoContatoExterno({
     negocioId: negocio.id,
     statusNegocio: negocio.status,
@@ -186,15 +380,42 @@ export default async function ContratoPage({
   });
 
   const padroes = defaultsComissao(negocio.tipo);
-  // Base de cálculo padrão = valor acordado (ou, na falta, o valor de anúncio).
   const basePadrao =
     negocio.valor_acordado ?? negocio.imoveis?.valor_anuncio ?? 0;
-
-  // Regra dos 30 SM: venda com valor > limite exige escritura pública.
   const exigeEscritura =
     negocio.tipo === "venda" &&
     negocio.valor_acordado != null &&
     negocio.valor_acordado > LIMITE_ESCRITURA;
+
+  let contratoArquivoAssinado: string | null = null;
+  if (contrato?.arquivo_url) {
+    const { data } = await supabase.storage
+      .from("documentos-negocio")
+      .createSignedUrl(contrato.arquivo_url, 60 * 60);
+    contratoArquivoAssinado = data?.signedUrl ?? null;
+  }
+
+  const linksPix = new Map<string, string>();
+  await Promise.all(
+    pixDocs.map(async (doc) => {
+      const { data } = await supabase.storage
+        .from("documentos-negocio")
+        .createSignedUrl(doc.arquivo_url, 60 * 60);
+      if (data?.signedUrl) linksPix.set(doc.id, data.signedUrl);
+    }),
+  );
+
+  const statusPix = statusAgregado(pixDocs);
+  const estado = estadoOperacional(contrato, statusPix);
+  const usuarioId = sessao?.user.id ?? "";
+  const assinavel =
+    contrato != null &&
+    ["gerado", "pendente_assinaturas"].includes(contrato.status);
+  const compradores = participantesPorPapel(negocio.papeis_negocio, "comprador");
+  const proprietarios = participantesPorPapel(
+    negocio.papeis_negocio,
+    "proprietario",
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -204,12 +425,14 @@ export default async function ContratoPage({
           className={buttonVariants({ variant: "ghost", size: "sm" })}
         >
           <ArrowLeft className="size-4" />
-          Negócio
+          Negocio
         </Link>
       </div>
 
       <div className="print:hidden">
-        <h1 className="font-heading text-xl">Contrato e comissão</h1>
+        <h1 className="font-heading text-xl">
+          Contrato, assinaturas e comprovante
+        </h1>
         <p className="text-muted-foreground text-sm">
           {enderecoResumido(negocio.imoveis)}
         </p>
@@ -220,12 +443,12 @@ export default async function ContratoPage({
           <CardContent className="flex items-start gap-3 pt-0">
             <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-500" />
             <div className="text-sm">
-              <p className="font-medium">Escritura pública obrigatória</p>
+              <p className="font-medium">Escritura publica obrigatoria</p>
               <p className="text-muted-foreground">
-                Venda acima de 30 salários mínimos ({formatBRL(LIMITE_ESCRITURA)},
+                Venda acima de 30 salarios minimos ({formatBRL(LIMITE_ESCRITURA)},
                 considerando SM = {formatBRL(SALARIO_MINIMO)}) exige escritura
-                pública em cartório (Código Civil, art. 108). O instrumento
-                particular não basta para a transferência de propriedade.
+                publica em cartorio. O contrato particular nao substitui a
+                transferencia formal de propriedade.
               </p>
             </div>
           </CardContent>
@@ -252,14 +475,13 @@ export default async function ContratoPage({
         </div>
       )}
 
-      {/* Seção Comissão */}
       <Card className="print:hidden">
         <CardHeader>
-          <CardTitle>Comissão</CardTitle>
+          <CardTitle>Comissao</CardTitle>
           <CardDescription>
-            Defaults conforme o tipo do negócio
+            Defaults conforme o tipo do negocio
             {negocio.tipo === "locacao"
-              ? " (locação: 1 aluguel)."
+              ? " (locacao: 1 aluguel)."
               : " (venda urbana: 6%)."}{" "}
             O split captador/vendedor deve somar 100%.
           </CardDescription>
@@ -268,16 +490,16 @@ export default async function ContratoPage({
           {comissao && (
             <div className="rounded-lg bg-muted/50 px-3 py-2 text-sm">
               <span className="text-muted-foreground">
-                Última comissão registrada:{" "}
+                Ultima comissao registrada:{" "}
               </span>
               <span className="font-medium tabular-nums">
                 {formatBRL(comissao.valor)}
               </span>{" "}
               <span className="text-muted-foreground">
-                ({comissao.percentual ?? "—"}% sobre{" "}
-                {formatBRL(comissao.base_calculo)} · captador{" "}
-                {comissao.split?.captador_pct ?? "—"}% / vendedor{" "}
-                {comissao.split?.vendedor_pct ?? "—"}% ·{" "}
+                ({comissao.percentual ?? "-"}% sobre{" "}
+                {formatBRL(comissao.base_calculo)}; captador{" "}
+                {comissao.split?.captador_pct ?? "-"}% / vendedor{" "}
+                {comissao.split?.vendedor_pct ?? "-"}%;{" "}
                 {formatDataHora(comissao.criado_em)})
               </span>
             </div>
@@ -293,112 +515,313 @@ export default async function ContratoPage({
         </CardContent>
       </Card>
 
-      {/* Seção Contrato */}
       <Card className="print:hidden">
         <CardHeader>
-          <CardTitle>Contrato</CardTitle>
-          <CardDescription>
-            Gere o contrato, revise o resumo imprimível e marque como assinado.
-          </CardDescription>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardDescription>Esteira de contrato</CardDescription>
+              <CardTitle>{estado.label}</CardTitle>
+            </div>
+            {contrato && (
+              <Badge variant={CONTRATO_VARIANTS[contrato.status] ?? "secondary"}>
+                {CONTRATO_ROTULOS[contrato.status] ?? contrato.status}
+              </Badge>
+            )}
+          </div>
+          <CardDescription>{estado.detalhe}</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+        <CardContent className="flex flex-col gap-6">
           {!contrato ? (
-            <>
+            <div className="flex flex-col gap-3 rounded-lg border p-4">
               <p className="text-muted-foreground text-sm">
-                Nenhum contrato gerado ainda.
+                Nenhum contrato foi gerado para este negocio.
               </p>
-              <GerarContratoButton negocioId={negocio.id} />
-            </>
+              {usuarioPodeOperar ? (
+                <GerarContratoButton negocioId={negocio.id} />
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  Aguarde proprietario, corretor ou admin gerar o contrato.
+                </p>
+              )}
+            </div>
           ) : (
             <>
-              <dl className="grid gap-4 sm:grid-cols-3">
-                <div className="flex flex-col gap-1">
-                  <dt className="text-muted-foreground text-xs">Status</dt>
-                  <dd>
-                    <Badge
-                      variant={
-                        contrato.status === "assinado" ? "default" : "secondary"
-                      }
-                    >
-                      {CONTRATO_ROTULOS[contrato.status] ?? contrato.status}
-                    </Badge>
-                  </dd>
+              <section className="grid gap-3 md:grid-cols-4">
+                <div className="rounded-lg border p-3">
+                  <p className="text-muted-foreground text-xs">Versao</p>
+                  <p className="text-sm font-medium">v{contrato.versao}</p>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <dt className="text-muted-foreground text-xs">Gerado em</dt>
-                  <dd className="tabular-nums text-sm">
-                    {formatDataHora(contrato.gerado_em)}
-                  </dd>
+                <div className="rounded-lg border p-3">
+                  <p className="text-muted-foreground text-xs">Gerado em</p>
+                  <p className="text-sm">{formatDataHora(contrato.gerado_em)}</p>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <dt className="text-muted-foreground text-xs">Assinado em</dt>
-                  <dd className="tabular-nums text-sm">
-                    {formatDataHora(contrato.assinado_em)}
-                  </dd>
+                <div className="rounded-lg border p-3">
+                  <p className="text-muted-foreground text-xs">Assinado em</p>
+                  <p className="text-sm">{formatDataHora(contrato.assinado_em)}</p>
                 </div>
-              </dl>
+                <div className="rounded-lg border p-3">
+                  <p className="text-muted-foreground text-xs">Revisao</p>
+                  <p className="text-sm">{formatDataHora(contrato.revisado_em)}</p>
+                </div>
+              </section>
 
-              {contrato.url_pdf && (
-                <a
-                  href={contrato.url_pdf}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={buttonVariants({
-                    variant: "outline",
-                    size: "sm",
-                    className: "w-fit",
-                  })}
-                >
-                  Abrir PDF assinado
-                </a>
+              {contrato.motivo_reprovacao && (
+                <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">
+                  <p className="font-medium">Motivo da reprovacao</p>
+                  <p className="text-muted-foreground">
+                    {contrato.motivo_reprovacao}
+                  </p>
+                </div>
               )}
 
-              <div className="flex flex-wrap items-center gap-3 border-t pt-4">
-                <ImprimirButton />
-                {/* Permite regerar o contrato (reaplica a regra de escritura). */}
-                <GerarContratoButton negocioId={negocio.id} />
-              </div>
+              <section className="flex flex-col gap-3 rounded-lg border p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-semibold">
+                      Arquivo formal do contrato
+                    </h2>
+                    <p className="text-muted-foreground text-sm">
+                      Anexe PDF ou imagem do contrato assinado quando houver
+                      documento externo. O arquivo fica privado.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <ImprimirButton />
+                    {usuarioPodeOperar && (
+                      <GerarContratoButton negocioId={negocio.id} />
+                    )}
+                  </div>
+                </div>
 
-              {contrato.status !== "assinado" && (
-                <div className="border-t pt-4">
-                  <p className="mb-3 text-sm font-medium">
-                    Confirmar assinatura
-                  </p>
-                  <MarcarAssinadoForm
+                <div className="flex flex-wrap items-center gap-3">
+                  {contratoArquivoAssinado ? (
+                    <a
+                      href={contratoArquivoAssinado}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={buttonVariants({
+                        variant: "outline",
+                        size: "sm",
+                      })}
+                    >
+                      <FileText className="size-4" />
+                      Abrir arquivo privado
+                    </a>
+                  ) : contrato.url_pdf ? (
+                    <a
+                      href={contrato.url_pdf}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={buttonVariants({
+                        variant: "outline",
+                        size: "sm",
+                      })}
+                    >
+                      <FileText className="size-4" />
+                      Abrir URL legado
+                    </a>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">
+                      Nenhum arquivo anexado.
+                    </p>
+                  )}
+                </div>
+
+                {usuarioPodeOperar && (
+                  <UploadContratoArquivoForm
                     contratoId={contrato.id}
                     negocioId={negocio.id}
+                    usuarioId={usuarioId}
                   />
+                )}
+              </section>
+
+              <section className="flex flex-col gap-3 rounded-lg border p-4">
+                <div>
+                  <h2 className="text-sm font-semibold">
+                    Assinaturas internas
+                  </h2>
+                  <p className="text-muted-foreground text-sm">
+                    Cada parte assina o proprio papel. A auditoria guarda data,
+                    usuario, versao, user-agent e hash do IP.
+                  </p>
                 </div>
+
+                {(["comprador", "proprietario"] as const).map((papel) => {
+                  const assinatura = assinaturaPorPapel(assinaturas, papel);
+                  const pessoas =
+                    papel === "comprador" ? compradores : proprietarios;
+                  const possoAssinar =
+                    assinavel &&
+                    !assinatura &&
+                    usuarioPodeAssinarPapel(
+                      negocio.papeis_negocio,
+                      sessao?.user.id,
+                      papel,
+                    );
+
+                  return (
+                    <div
+                      key={papel}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-muted/40 p-3"
+                    >
+                      <div>
+                        <p className="text-sm font-medium capitalize">
+                          {papel}
+                        </p>
+                        <p className="text-muted-foreground text-xs">
+                          {assinatura
+                            ? `Assinado por ${nomeParticipante(assinatura)} em ${formatDataHora(assinatura.assinado_em)}`
+                            : pessoas.length > 0
+                              ? pessoas.map(nomeParticipante).join(", ")
+                              : "Nenhum participante ativo neste papel."}
+                        </p>
+                      </div>
+                      {assinatura ? (
+                        <Badge variant="default">
+                          <CheckCircle2 className="size-3" />
+                          Assinado
+                        </Badge>
+                      ) : possoAssinar ? (
+                        <AssinarContratoButton
+                          contratoId={contrato.id}
+                          papel={papel}
+                        />
+                      ) : (
+                        <Badge variant="outline">Pendente</Badge>
+                      )}
+                    </div>
+                  );
+                })}
+              </section>
+
+              <section className="flex flex-col gap-3 rounded-lg border p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="flex items-center gap-2 text-sm font-semibold">
+                      <Receipt className="size-4" />
+                      Comprovante de sinal/Pix
+                    </h2>
+                    <p className="text-muted-foreground text-sm">
+                      {pixItem?.descricao ??
+                        "Anexe o comprovante de Pix ou transferencia quando houver sinal."}
+                    </p>
+                  </div>
+                  <Badge variant={variantStatusDoc(statusPix)}>
+                    {rotuloStatusDoc(statusPix)}
+                  </Badge>
+                </div>
+
+                {pixItem && usuarioId ? (
+                  <EnviarDocumentoItem
+                    negocioId={negocio.id}
+                    usuarioId={usuarioId}
+                    checklistItemId={pixItem.id}
+                  />
+                ) : (
+                  <p className="text-muted-foreground text-sm">
+                    Item de checklist nao disponivel para este tipo de negocio.
+                  </p>
+                )}
+
+                {pixDocs.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    {pixDocs.map((doc) => {
+                      const link = linksPix.get(doc.id);
+                      return (
+                        <div
+                          key={doc.id}
+                          className="flex flex-wrap items-start justify-between gap-3 rounded-md bg-muted/40 p-3"
+                        >
+                          <div>
+                            {link ? (
+                              <a
+                                href={link}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-primary text-sm underline underline-offset-2"
+                              >
+                                Ver comprovante
+                              </a>
+                            ) : (
+                              <p className="text-sm">Comprovante enviado</p>
+                            )}
+                            <p className="text-muted-foreground text-xs">
+                              Enviado em {formatDataHora(doc.criado_em)}
+                            </p>
+                            {doc.motivo_reprovacao && (
+                              <p className="text-destructive text-xs">
+                                {doc.motivo_reprovacao}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <Badge variant={variantStatusDoc(doc.status)}>
+                              {rotuloStatusDoc(doc.status)}
+                            </Badge>
+                            {podeRevisar && (
+                              <StatusDocumentoButtons documentoId={doc.id} />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+
+              {contatoExterno?.mostrar && !servico && (
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+                  <p className="font-medium">Evidencia sem servico Cade</p>
+                  <p className="text-muted-foreground">
+                    Neste caminho a plataforma armazena contrato, assinaturas e
+                    comprovantes como evidencia operacional. A assessoria
+                    juridica nao foi contratada neste fluxo.
+                  </p>
+                </div>
+              )}
+
+              {podeRevisar && (
+                <section className="flex flex-col gap-3 rounded-lg border p-4">
+                  <div>
+                    <h2 className="text-sm font-semibold">
+                      Revisao operacional
+                    </h2>
+                    <p className="text-muted-foreground text-sm">
+                      Admin ou corretor ativo pode validar ou reprovar o
+                      contrato. A reprovacao exige motivo.
+                    </p>
+                  </div>
+                  <RevisarContratoForm contratoId={contrato.id} />
+                </section>
               )}
             </>
           )}
         </CardContent>
       </Card>
 
-      {/* Resumo imprimível — visível na tela quando há contrato, e o único
-          bloco que aparece na impressão (window.print). */}
       {contrato && (
         <section className="rounded-xl bg-card p-8 ring-1 ring-foreground/10 print:block print:p-0 print:ring-0">
           <header className="mb-6 border-b pb-4">
             <h2 className="font-heading text-2xl">
               {negocio.tipo === "locacao"
-                ? "Contrato de Locação"
+                ? "Contrato de Locacao"
                 : "Contrato de Compra e Venda"}
             </h2>
             <p className="text-muted-foreground text-sm">
-              Cadê Imóveis · documento gerado em{" "}
+              Cade Imoveis - versao {contrato.versao} gerada em{" "}
               {formatDataHora(contrato.gerado_em)}
             </p>
           </header>
 
           <dl className="grid gap-4 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-muted-foreground text-xs">Imóvel</dt>
+              <dt className="text-muted-foreground text-xs">Imovel</dt>
               <dd>{enderecoResumido(negocio.imoveis)}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground text-xs">Tipo de negócio</dt>
-              <dd className="capitalize">{negocio.tipo ?? "—"}</dd>
+              <dt className="text-muted-foreground text-xs">Tipo de negocio</dt>
+              <dd className="capitalize">{negocio.tipo ?? "-"}</dd>
             </div>
             <div>
               <dt className="text-muted-foreground text-xs">
@@ -411,19 +834,19 @@ export default async function ContratoPage({
               </dd>
             </div>
             <div>
-              <dt className="text-muted-foreground text-xs">Escritura pública</dt>
+              <dt className="text-muted-foreground text-xs">Escritura publica</dt>
               <dd>
                 {negocio.escritura_publica || exigeEscritura
-                  ? "Obrigatória (cartório)"
-                  : "Não obrigatória"}
+                  ? "Obrigatoria em cartorio"
+                  : "Nao obrigatoria"}
               </dd>
             </div>
             {comissao && (
               <>
                 <div>
-                  <dt className="text-muted-foreground text-xs">Comissão</dt>
+                  <dt className="text-muted-foreground text-xs">Comissao</dt>
                   <dd className="tabular-nums">
-                    {formatBRL(comissao.valor)} ({comissao.percentual ?? "—"}%)
+                    {formatBRL(comissao.valor)} ({comissao.percentual ?? "-"}%)
                   </dd>
                 </div>
                 <div>
@@ -431,9 +854,9 @@ export default async function ContratoPage({
                     Pagador / split
                   </dt>
                   <dd className="capitalize">
-                    {comissao.pagador} · captador{" "}
-                    {comissao.split?.captador_pct ?? "—"}% / vendedor{" "}
-                    {comissao.split?.vendedor_pct ?? "—"}%
+                    {comissao.pagador} - captador{" "}
+                    {comissao.split?.captador_pct ?? "-"}% / vendedor{" "}
+                    {comissao.split?.vendedor_pct ?? "-"}%
                   </dd>
                 </div>
               </>
@@ -442,9 +865,9 @@ export default async function ContratoPage({
 
           {(negocio.escritura_publica || exigeEscritura) && (
             <p className="mt-6 rounded-lg bg-amber-500/10 px-3 py-2 text-sm">
-              Atenção: por se tratar de venda acima de 30 salários mínimos
-              ({formatBRL(LIMITE_ESCRITURA)}), a transferência exige escritura
-              pública lavrada em cartório (Código Civil, art. 108).
+              Atencao: por se tratar de venda acima de 30 salarios minimos
+              ({formatBRL(LIMITE_ESCRITURA)}), a transferencia exige escritura
+              publica lavrada em cartorio.
             </p>
           )}
 
@@ -453,7 +876,7 @@ export default async function ContratoPage({
               Vendedor / Locador
             </div>
             <div className="border-t pt-2 text-center text-sm">
-              Comprador / Locatário
+              Comprador / Locatario
             </div>
           </div>
         </section>

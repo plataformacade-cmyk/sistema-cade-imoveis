@@ -40,6 +40,10 @@ export type Evento =
   | "followup_externo_respondido"
   | "contrato_gerado"
   | "contrato_assinado"
+  | "contrato_status_mudado"
+  | "contrato_reprovado"
+  | "contrato_validado"
+  | "contrato_comprovante_sinal_anexado"
   | "comissao_registrada"
   | "erro_nao_capturado";
 

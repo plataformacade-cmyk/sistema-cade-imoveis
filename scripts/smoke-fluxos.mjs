@@ -787,10 +787,123 @@ const { error: eCom } = await comp.from("comissoes").insert({
 });
 check("participante: registrar comissao", !eCom, eCom?.message);
 
-const { error: eCon } = await comp
+const { data: contratoSmoke, error: eCon } = await prop
   .from("contratos")
-  .insert({ negocio_id: negId, tipo: "venda", status: "gerado" });
-check("participante: gerar contrato", !eCon, eCon?.message);
+  .insert({
+    negocio_id: negId,
+    tipo: "venda",
+    status: "pendente_assinaturas",
+    versao: 1,
+    gerado_por: propId,
+    termo_resumo: "Smoke contrato v1.",
+  })
+  .select("id, versao, status")
+  .single();
+check(
+  "proprietario: gerar contrato versionado",
+  !eCon && contratoSmoke?.id && contratoSmoke?.versao === 1,
+  eCon?.message ?? JSON.stringify(contratoSmoke),
+);
+
+const { data: contratoFora, error: eContratoForaLe } = await fora
+  .from("contratos")
+  .select("id")
+  .eq("id", contratoSmoke?.id);
+check(
+  "usuario externo: nao le contrato",
+  !eContratoForaLe && (contratoFora?.length ?? 0) === 0,
+  eContratoForaLe?.message ?? `rows=${contratoFora?.length}`,
+);
+
+const { error: eAssComp } = await comp.from("contrato_assinaturas").insert({
+  contrato_id: contratoSmoke?.id,
+  negocio_id: negId,
+  usuario_id: compId,
+  papel: "comprador",
+  versao: contratoSmoke?.versao,
+  termo_resumo: "Smoke assinatura comprador.",
+  ip_hash: "smoke",
+  user_agent: "smoke",
+});
+check("comprador: assina contrato", !eAssComp, eAssComp?.message);
+
+const { error: eAssProp } = await prop.from("contrato_assinaturas").insert({
+  contrato_id: contratoSmoke?.id,
+  negocio_id: negId,
+  usuario_id: propId,
+  papel: "proprietario",
+  versao: contratoSmoke?.versao,
+  termo_resumo: "Smoke assinatura proprietario.",
+  ip_hash: "smoke",
+  user_agent: "smoke",
+});
+check("proprietario: assina contrato", !eAssProp, eAssProp?.message);
+
+const { error: eAssFora } = await fora.from("contrato_assinaturas").insert({
+  contrato_id: contratoSmoke?.id,
+  negocio_id: negId,
+  usuario_id: foraId,
+  papel: "comprador",
+  versao: contratoSmoke?.versao,
+  termo_resumo: "Tentativa externa.",
+});
+check(
+  "usuario externo: nao assina contrato",
+  !!eAssFora,
+  "assinatura externa nao bloqueada",
+);
+
+const { data: contratoValidado, error: eContratoRev } = await corr
+  .from("contratos")
+  .update({
+    status: "validado",
+    revisado_por: corrId,
+    revisado_em: new Date().toISOString(),
+  })
+  .eq("id", contratoSmoke?.id)
+  .select("status, revisado_por")
+  .single();
+check(
+  "corretor: valida contrato",
+  !eContratoRev &&
+    contratoValidado?.status === "validado" &&
+    contratoValidado?.revisado_por === corrId,
+  eContratoRev?.message ?? JSON.stringify(contratoValidado),
+);
+
+const { data: checklistPix, error: eChecklistPix } = await prop
+  .from("documentos_checklist_itens")
+  .select("id")
+  .eq("tipo_negocio", "venda")
+  .eq("perfil", "contrato_minuta")
+  .eq("codigo", "minuta_comprovante_sinal")
+  .eq("ativo", true)
+  .single();
+check(
+  "checklist documentos: comprovante Pix",
+  !eChecklistPix && checklistPix?.id,
+  eChecklistPix?.message,
+);
+
+const { data: docPix, error: eDocPix } = await comp
+  .from("documentos")
+  .insert({
+    negocio_id: negId,
+    checklist_item_id: checklistPix?.id,
+    tipo_doc: "sera_derivado",
+    arquivo_url: `${compId}/pix.pdf`,
+    enviado_por: compId,
+    status: "recebido",
+  })
+  .select("id, tipo_doc, perfil, status")
+  .single();
+check(
+  "comprador: anexa comprovante Pix privado",
+  !eDocPix &&
+    docPix?.tipo_doc === "minuta_comprovante_sinal" &&
+    docPix?.perfil === "contrato_minuta",
+  eDocPix?.message ?? JSON.stringify(docPix),
+);
 
 console.log(`\n=== RESULTADO: ${ok} PASS / ${fail} FAIL ===`);
 process.exit(fail > 0 ? 1 : 0);

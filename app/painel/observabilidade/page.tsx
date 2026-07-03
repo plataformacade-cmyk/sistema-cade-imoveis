@@ -31,6 +31,12 @@ const EVENTOS = [
   "contato_externo_liberado",
   "followup_externo_criado",
   "followup_externo_respondido",
+  "contrato_gerado",
+  "contrato_assinado",
+  "contrato_status_mudado",
+  "contrato_reprovado",
+  "contrato_validado",
+  "contrato_comprovante_sinal_anexado",
   "papel_atribuido",
 ];
 

@@ -134,7 +134,19 @@ export async function enviarDocumento(
     },
   });
 
+  if (itemChecklist.codigo === "minuta_comprovante_sinal") {
+    await registrarEvento("contrato_comprovante_sinal_anexado", {
+      entidadeId: negocio_id,
+      payload: {
+        documento_id: data.id,
+        checklist_item_id,
+        perfil: itemChecklist.perfil,
+      },
+    });
+  }
+
   revalidatePath(`/painel/negocios/${negocio_id}/documentos`);
+  revalidatePath(`/painel/negocios/${negocio_id}/contrato`);
   revalidatePath(`/painel/negocios/${negocio_id}`);
   return { message: "Documento enviado." };
 }
@@ -202,6 +214,7 @@ export async function mudarStatusDocumento(
   });
 
   revalidatePath(`/painel/negocios/${data.negocio_id}/documentos`);
+  revalidatePath(`/painel/negocios/${data.negocio_id}/contrato`);
   revalidatePath(`/painel/negocios/${data.negocio_id}`);
   return { message: "Status do documento atualizado." };
 }
