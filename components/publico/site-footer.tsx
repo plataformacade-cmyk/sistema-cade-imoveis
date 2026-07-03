@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { criarCadastroAnunciarHref } from "@/lib/auth-redirect";
 
 const COLUNAS = [
   {
     titulo: "Plataforma",
     links: [
       { href: "/plataforma", label: "Buscar imóveis" },
-      { href: "/cadastro", label: "Anunciar imóvel" },
+      { href: criarCadastroAnunciarHref(), label: "Anunciar imóvel" },
       { href: "/como-funciona", label: "Como funciona" },
     ],
   },

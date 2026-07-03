@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/publico/site-header";
 import { SiteFooter } from "@/components/publico/site-footer";
 import { Reveal } from "@/components/publico/reveal";
 import { buttonVariants } from "@/components/ui/button";
+import { criarCadastroAnunciarHref } from "@/lib/auth-redirect";
 import { PERFIS, PERFIS_LISTA, type Perfil } from "../_perfis";
 
 export function generateStaticParams() {
@@ -36,6 +37,8 @@ export default async function PerfilPage({
   if (!p) notFound();
 
   const outros = PERFIS_LISTA.filter((o) => o.slug !== p.slug);
+  const cadastroHref =
+    p.slug === "interessado" ? "/cadastro" : criarCadastroAnunciarHref();
 
   return (
     <>
@@ -70,7 +73,7 @@ export default async function PerfilPage({
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
-                  href="/cadastro"
+                  href={cadastroHref}
                   className={buttonVariants({ size: "lg" })}
                 >
                   Começar agora

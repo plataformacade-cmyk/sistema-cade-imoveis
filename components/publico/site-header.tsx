@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getSessao } from "@/lib/auth";
+import { criarCadastroAnunciarHref } from "@/lib/auth-redirect";
 import { buttonVariants } from "@/components/ui/button";
 import { MobileMenu } from "./mobile-menu";
 import { NAV } from "./nav";
@@ -48,7 +49,7 @@ export async function SiteHeader() {
                 Entrar
               </Link>
               <Link
-                href="/cadastro"
+                href={criarCadastroAnunciarHref()}
                 className={buttonVariants({
                   size: "sm",
                   className: "hidden sm:inline-flex",

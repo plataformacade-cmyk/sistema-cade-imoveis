@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/publico/site-footer";
 import { Reveal } from "@/components/publico/reveal";
 import { buttonVariants } from "@/components/ui/button";
 import { PERFIS_LISTA } from "./_perfis";
+import { criarCadastroAnunciarHref } from "@/lib/auth-redirect";
 import { faqLd } from "@/lib/seo";
 
 export const metadata = {
@@ -147,7 +148,7 @@ export default function ComoFuncionaPage() {
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
                 <Link
-                  href="/cadastro"
+                  href={criarCadastroAnunciarHref()}
                   className={buttonVariants({ variant: "secondary", size: "lg" })}
                 >
                   Anunciar imóvel

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Menu } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { criarCadastroAnunciarHref } from "@/lib/auth-redirect";
 import {
   Sheet,
   SheetContent,
@@ -51,7 +52,7 @@ export function MobileMenu({ logado }: { logado: boolean }) {
           ) : (
             <>
               <Link
-                href="/cadastro"
+                href={criarCadastroAnunciarHref()}
                 onClick={() => setOpen(false)}
                 className={buttonVariants()}
               >

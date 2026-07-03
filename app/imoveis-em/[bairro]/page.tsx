@@ -7,6 +7,7 @@ import { Reveal } from "@/components/publico/reveal";
 import { buttonVariants } from "@/components/ui/button";
 import { ImovelCard, type ImovelCardData } from "@/components/publico/imovel-card";
 import { SITE, slugBairro, breadcrumbLd, moedaBRL } from "@/lib/seo";
+import { criarCadastroAnunciarHref } from "@/lib/auth-redirect";
 import { infoDoBairro } from "../../plataforma/imoveis/[id]/_bairros";
 import { buscarImoveisPublicos } from "@/lib/imoveis/privacidade-endereco";
 
@@ -169,7 +170,7 @@ export default async function ImoveisEmBairroPage({
                   Ver todos os imóveis
                 </Link>
                 <Link
-                  href="/cadastro"
+                  href={criarCadastroAnunciarHref()}
                   className={buttonVariants({ variant: "outline" })}
                 >
                   Anunciar imóvel

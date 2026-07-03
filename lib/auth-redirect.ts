@@ -5,6 +5,7 @@ const PERFIS_TERMOS = ["comprador", "proprietario", "corretor", "admin"] as cons
 
 export const AUTH_NEXT_PADRAO = "/painel";
 export const CADASTRO_NEXT_PADRAO = "/cadastro/completar";
+export const CADASTRO_ANUNCIAR_NEXT = "/cadastro/completar?intencao=anunciar";
 export const TERMOS_NEXT_PADRAO = "/painel";
 
 export function ehUuid(valor: string | null | undefined) {
@@ -54,6 +55,13 @@ function resolverAuthNextInterno(
   if (url.pathname === "/cadastro/completar" && !url.search) {
     return CADASTRO_NEXT_PADRAO;
   }
+  if (
+    url.pathname === "/cadastro/completar" &&
+    url.searchParams.get("intencao") === "anunciar" &&
+    Array.from(url.searchParams.keys()).every((key) => key === "intencao")
+  ) {
+    return CADASTRO_ANUNCIAR_NEXT;
+  }
 
   if (url.pathname === "/interesse/concluir") {
     const imovelId = url.searchParams.get("imovel_id");
@@ -90,6 +98,14 @@ export function ehDestinoAceiteTermos(destino: string | null | undefined) {
   return resolverAuthNext(destino, "")?.startsWith("/termos/aceite") ?? false;
 }
 
+export function ehDestinoCadastroAnunciar(destino: string | null | undefined) {
+  return resolverAuthNext(destino, "") === CADASTRO_ANUNCIAR_NEXT;
+}
+
+export function criarCadastroAnunciarHref() {
+  return criarCadastroHref(CADASTRO_ANUNCIAR_NEXT);
+}
+
 export function criarDestinoAceiteTermos(
   perfis: string[],
   next: string | null | undefined = TERMOS_NEXT_PADRAO,
@@ -120,7 +136,11 @@ export function criarLoginHref(next: string | null | undefined) {
 
 export function criarCadastroHref(next: string | null | undefined) {
   const destino = resolverAuthNext(next, CADASTRO_NEXT_PADRAO);
-  if (!ehDestinoInteresse(destino) && !ehDestinoAceiteTermos(destino)) {
+  if (
+    !ehDestinoInteresse(destino) &&
+    !ehDestinoAceiteTermos(destino) &&
+    !ehDestinoCadastroAnunciar(destino)
+  ) {
     return "/cadastro";
   }
   return `/cadastro?next=${encodeURIComponent(destino)}`;

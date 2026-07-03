@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { POSTS, getPost, formatarData } from "../_posts";
 import { CardPost, BlocoNewsletter, TextoComLinks } from "../_components";
+import { criarCadastroAnunciarHref } from "@/lib/auth-redirect";
 import { SITE, articleLd, faqLd, breadcrumbLd } from "@/lib/seo";
 
 export function generateStaticParams() {
@@ -252,7 +253,7 @@ export default async function PostPage({
                   Buscar imóveis
                 </Link>
                 <Link
-                  href="/cadastro"
+                  href={criarCadastroAnunciarHref()}
                   className={buttonVariants({ variant: "outline" })}
                 >
                   Anunciar imóvel

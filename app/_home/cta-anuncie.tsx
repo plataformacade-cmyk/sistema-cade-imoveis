@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { criarCadastroAnunciarHref } from "@/lib/auth-redirect";
 
 const FOTO_CTA = "/institucional/anunciar.webp";
 
@@ -19,7 +20,7 @@ export function HomeCtaAnuncie() {
           </p>
           <div>
             <Link
-              href="/cadastro"
+              href={criarCadastroAnunciarHref()}
               className={buttonVariants({
                 size: "lg",
                 className: "h-11 px-6 text-sm",

@@ -35,16 +35,24 @@ const FAIXAS = [
 
 const PASSOS = ["Intenção", "Preferências", "Tudo pronto"];
 
-export function OnboardingWizard({ primeiroNome }: { primeiroNome: string }) {
+type Intencao = "buscar" | "anunciar";
+
+export function OnboardingWizard({
+  primeiroNome,
+  intencaoInicial = null,
+}: {
+  primeiroNome: string;
+  intencaoInicial?: Intencao | null;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [passo, setPasso] = useState(0);
-  const [intencao, setIntencao] = useState<"buscar" | "anunciar" | null>(null);
+  const [passo, setPasso] = useState(intencaoInicial === "anunciar" ? 1 : 0);
+  const [intencao, setIntencao] = useState<Intencao | null>(intencaoInicial);
   const [tipo, setTipo] = useState<string | null>(null);
   const [bairro, setBairro] = useState<string | null>(null);
   const [faixa, setFaixa] = useState<string | null>(null);
 
-  function escolher(i: "buscar" | "anunciar") {
+  function escolher(i: Intencao) {
     setIntencao(i);
     setPasso(1);
   }
