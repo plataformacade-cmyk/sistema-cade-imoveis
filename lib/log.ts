@@ -50,6 +50,8 @@ export type Evento =
   | "cartorial_pendencia_resolvida"
   | "cartorial_anexo_enviado"
   | "cartorial_concluido"
+  | "suporte_pos_conclusao_criado"
+  | "suporte_pos_conclusao_status_mudado"
   | "comissao_registrada"
   | "erro_nao_capturado";
 

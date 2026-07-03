@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessao } from "@/lib/auth";
 import { responder, type TurnoChat } from "@/lib/suporte/agente";
 import { saudacao } from "@/lib/suporte/base-conhecimento";
+import { registrarEvento } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
@@ -141,6 +142,11 @@ export async function PATCH(request: Request) {
   }
 
   const supabase = await createClient();
+  const { data: conversa } = await supabase
+    .from("suporte_conversas")
+    .select("id, tipo, negocio_id, status")
+    .eq("id", conversaId)
+    .maybeSingle();
   const novoStatus = acao === "escalar" ? "aguardando_humano" : "resolvida";
   const { error } = await supabase
     .from("suporte_conversas")
@@ -156,6 +162,18 @@ export async function PATCH(request: Request) {
       conversa_id: conversaId,
       autor: "assistente",
       corpo: "Pedido enviado para a equipe da Cadê. Um atendente humano vai responder por aqui em breve. 👍",
+    });
+  }
+
+  if (conversa?.tipo === "pos_conclusao") {
+    await registrarEvento("suporte_pos_conclusao_status_mudado", {
+      entidadeId: conversa.negocio_id ?? conversa.id,
+      payload: {
+        conversa_id: conversa.id,
+        status_anterior: conversa.status,
+        status: novoStatus,
+        acao,
+      },
     });
   }
 

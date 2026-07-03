@@ -34,6 +34,7 @@ import { AbrirConversaButton } from "../_components/abrir-conversa-button";
 import { ServicoJuridicoCard } from "../_components/servico-juridico-card";
 import { ContatoExternoCard } from "../_components/contato-externo-card";
 import { FollowupsExternosCard } from "../_components/followups-externos-card";
+import { SuportePosConclusaoCard } from "../_components/suporte-pos-conclusao-card";
 import { carregarEstadoContatoExterno } from "@/lib/contato-externo-server";
 import type { FollowupExternoResumo } from "@/lib/followups-externos";
 
@@ -62,6 +63,14 @@ type NegocioDetalhe = {
   criado_em: string | null;
   imoveis: ImovelEmbed;
   papeis_negocio: ParticipanteEmbed[];
+};
+
+type TicketPosConclusaoResumo = {
+  id: string;
+  assunto: string | null;
+  status: string;
+  origem_negocio: string | null;
+  atualizado_em: string;
 };
 
 export default async function NegocioDetalhePage({
@@ -146,6 +155,20 @@ export default async function NegocioDetalhePage({
         .order("prazo_em", { ascending: true })
     : { data: [] };
   const followups = (followupsData ?? []) as unknown as FollowupExternoResumo[];
+  const podeAbrirSuportePosConclusao =
+    negocio.status === "concluido" &&
+    papeisUsuario.some((papel) => ["comprador", "proprietario"].includes(papel));
+  const { data: ticketsPosConclusaoData } =
+    negocio.status === "concluido"
+      ? await supabase
+          .from("suporte_conversas")
+          .select("id, assunto, status, origem_negocio, atualizado_em")
+          .eq("negocio_id", negocio.id)
+          .eq("tipo", "pos_conclusao")
+          .order("atualizado_em", { ascending: false })
+      : { data: [] };
+  const ticketsPosConclusao =
+    (ticketsPosConclusaoData ?? []) as TicketPosConclusaoResumo[];
 
   return (
     <div className="flex flex-col gap-6">
@@ -237,6 +260,15 @@ export default async function NegocioDetalhePage({
       )}
 
       {podeOperarFollowups && <FollowupsExternosCard followups={followups} />}
+
+      {(podeAbrirSuportePosConclusao ||
+        Boolean(sessao?.isAdmin && ticketsPosConclusao.length > 0)) && (
+        <SuportePosConclusaoCard
+          negocioId={negocio.id}
+          podeAbrir={podeAbrirSuportePosConclusao}
+          tickets={ticketsPosConclusao}
+        />
+      )}
 
       <Card>
         <CardHeader>
