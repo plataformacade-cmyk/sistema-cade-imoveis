@@ -1,7 +1,9 @@
 "use client";
 
-import { Search } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Megaphone, Search } from "lucide-react";
 import { useEffect, useRef, type CSSProperties } from "react";
+import { criarCadastroAnunciarHref } from "@/lib/auth-redirect";
 
 const TIPOS = [
   { value: "", label: "Qualquer tipo" },
@@ -19,8 +21,8 @@ const POSTER_HERO = "/hero-uberlandia.webp";
 
 const STATS = [
   { n: "12+", l: "imóveis ativos" },
-  { n: "8", l: "bairros em Uberlândia" },
-  { n: "100%", l: "negociado na plataforma" },
+  { n: "8", l: "bairros mapeados" },
+  { n: "1 fluxo", l: "chat, visita e proposta" },
 ];
 
 const d = (s: string) => ({ "--d": s }) as CSSProperties;
@@ -77,38 +79,66 @@ export function HomeHero() {
           visível) — substitui a "lavada" branca que apagava o vídeo. */}
       <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/45 via-black/25 to-black/40" />
 
-      <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 px-4 py-24 text-center md:px-6 md:py-36">
-        <h1
-          className="entra max-w-3xl text-4xl font-semibold tracking-tight text-balance text-white [text-shadow:0_2px_20px_rgba(0,0,0,0.5)] sm:text-5xl md:text-6xl"
+      <div className="mx-auto flex max-w-5xl flex-col items-center gap-5 px-4 py-16 text-center md:px-6 md:py-24 lg:py-28">
+        <div
+          className="entra inline-flex items-center gap-2 rounded-full border border-white/20 bg-[var(--brand-blue)]/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--brand-blue-foreground)] shadow-lg shadow-black/20 backdrop-blur [text-shadow:0_1px_10px_rgba(0,0,0,0.35)]"
           style={d("0s")}
         >
-          Encontre seu próximo lar em{" "}
-          <span className="bg-gradient-to-r from-primary to-amber-400 bg-clip-text italic text-transparent [text-shadow:none]">
-            Uberlândia
+          <Megaphone className="size-4" />
+          Marketplace imobiliário de Uberlândia
+        </div>
+
+        <h1
+          className="entra max-w-3xl text-4xl font-semibold tracking-tight text-balance text-white [text-shadow:0_2px_20px_rgba(0,0,0,0.5)] sm:text-5xl md:text-6xl"
+          style={d("0.08s")}
+        >
+          Compre, venda ou alugue imóveis em{" "}
+          <span className="bg-gradient-to-r from-primary via-amber-300 to-[var(--brand-blue)] bg-clip-text italic text-transparent [text-shadow:none]">
+            Uberlândia pela Cadê
           </span>
         </h1>
 
         <p
-          className="entra max-w-xl text-lg text-balance text-white/90 [text-shadow:0_1px_12px_rgba(0,0,0,0.5)]"
-          style={d("0.12s")}
+          className="entra max-w-2xl text-base text-balance text-white/90 [text-shadow:0_1px_12px_rgba(0,0,0,0.5)] sm:text-lg"
+          style={d("0.16s")}
         >
-          Casas, apartamentos e terrenos selecionados — busque, converse e feche
-          negócio direto pela plataforma.
+          A Cadê conecta quem busca com quem anuncia e mantém interesse, conversa,
+          visita e proposta registrados em uma negociação mais organizada.
         </p>
+
+        <div
+          className="entra flex w-full max-w-xl flex-col items-stretch justify-center gap-3 sm:flex-row"
+          style={d("0.24s")}
+        >
+          <Link
+            href="/plataforma"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-black/20 transition-colors hover:bg-primary/90"
+          >
+            Buscar imóveis
+            <Search className="size-4" />
+          </Link>
+          <Link
+            href={criarCadastroAnunciarHref()}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-white/35 bg-white/12 px-6 text-sm font-semibold text-white shadow-lg shadow-black/15 backdrop-blur transition-colors hover:bg-white/20"
+          >
+            Anunciar imóvel
+            <ArrowRight className="size-4" />
+          </Link>
+        </div>
 
         <form
           method="get"
           action="/plataforma"
           className="entra mt-2 flex w-full max-w-3xl flex-col gap-2 rounded-2xl border bg-card/95 p-2 shadow-xl backdrop-blur sm:flex-row sm:items-center sm:rounded-full"
-          style={d("0.24s")}
+          style={d("0.32s")}
         >
           <div className="flex flex-1 items-center gap-2 px-3">
             <Search className="size-5 shrink-0 text-muted-foreground" />
             <input
               type="text"
               name="q"
-              placeholder="Bairro, cidade ou endereço…"
-              aria-label="Buscar por bairro, cidade ou endereço"
+              placeholder="Bairro, cidade ou tipo de imóvel…"
+              aria-label="Buscar por bairro, cidade ou tipo de imóvel"
               className="h-11 w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
             />
           </div>
@@ -130,13 +160,13 @@ export function HomeHero() {
             className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
           >
             <Search className="size-4" />
-            Buscar
+            Buscar agora
           </button>
         </form>
 
         <div
-          className="entra mt-8 flex flex-wrap items-center justify-center gap-x-10 gap-y-4"
-          style={d("0.36s")}
+          className="entra mt-5 flex flex-wrap items-center justify-center gap-x-10 gap-y-4"
+          style={d("0.4s")}
         >
           {STATS.map((s) => (
             <div key={s.l} className="text-center [text-shadow:0_1px_12px_rgba(0,0,0,0.5)]">

@@ -15,16 +15,16 @@ import { HomeCtaAnuncie } from "./_home/cta-anuncie";
 import { buscarImoveisPublicos } from "@/lib/imoveis/privacidade-endereco";
 
 export const metadata: Metadata = {
-  title: "Cadê Imóveis — encontre seu próximo lar em Uberlândia",
+  title: "Cadê Imóveis — busque, anuncie e negocie imóveis em Uberlândia",
   description:
-    "Busque casas, apartamentos e terrenos em Uberlândia. Converse direto pela plataforma e negocie sem ruído. Tem um imóvel? Anuncie grátis.",
+    "Marketplace imobiliário em Uberlândia para buscar, anunciar e negociar casas, apartamentos, terrenos e imóveis comerciais com conversa e proposta na plataforma.",
   openGraph: {
     type: "website",
     locale: "pt_BR",
     siteName: "Cadê Imóveis",
-    title: "Cadê Imóveis — encontre seu próximo lar em Uberlândia",
+    title: "Cadê Imóveis — busque, anuncie e negocie imóveis em Uberlândia",
     description:
-      "Casas, apartamentos e terrenos selecionados em Uberlândia. Busque, converse e feche negócio pela plataforma.",
+      "Busque, anuncie e negocie imóveis em Uberlândia com interesse, conversa, visita e proposta registrados pela plataforma.",
   },
 };
 

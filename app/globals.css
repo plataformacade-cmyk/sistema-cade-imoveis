@@ -35,6 +35,9 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-brand-blue-foreground: var(--brand-blue-foreground);
+  --color-brand-blue-soft: var(--brand-blue-soft);
+  --color-brand-blue: var(--brand-blue);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -57,6 +60,9 @@
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.637 0.208 41.6); /* laranja terracota #EA580C */
   --primary-foreground: oklch(0.985 0 0);
+  --brand-blue: oklch(0.72 0.16 235); /* azul céu vivo, secundário de marca */
+  --brand-blue-foreground: oklch(0.985 0 0);
+  --brand-blue-soft: oklch(0.96 0.04 235);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -92,6 +98,9 @@
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.637 0.208 41.6); /* laranja terracota #EA580C */
   --primary-foreground: oklch(0.985 0 0);
+  --brand-blue: oklch(0.74 0.14 235); /* azul céu vivo, secundário de marca */
+  --brand-blue-foreground: oklch(0.985 0 0);
+  --brand-blue-soft: oklch(0.25 0.06 235);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
