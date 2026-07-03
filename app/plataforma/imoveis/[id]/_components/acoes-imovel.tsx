@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Heart, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { enviarEngajamentoImovel } from "@/lib/engajamento/browser";
 
 const CHAVE = "cade:favoritos";
 
@@ -22,12 +23,14 @@ export function AcoesImovel({
   const [fav, setFav] = useState(false);
 
   useEffect(() => {
-    try {
-      const set = JSON.parse(localStorage.getItem(CHAVE) ?? "[]");
-      setFav(Array.isArray(set) && set.includes(imovelId));
-    } catch {
-      /* ignora */
-    }
+    queueMicrotask(() => {
+      try {
+        const set = JSON.parse(localStorage.getItem(CHAVE) ?? "[]");
+        setFav(Array.isArray(set) && set.includes(imovelId));
+      } catch {
+        /* ignora */
+      }
+    });
   }, [imovelId]);
 
   function toggleFav() {
@@ -51,6 +54,9 @@ export function AcoesImovel({
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({ title: titulo, url });
+        enviarEngajamentoImovel(imovelId, "compartilhamento", {
+          metadata: { metodo: "web_share" },
+        });
         return;
       } catch {
         /* usuário cancelou — cai pro copiar */
@@ -58,6 +64,9 @@ export function AcoesImovel({
     }
     try {
       await navigator.clipboard.writeText(url);
+      enviarEngajamentoImovel(imovelId, "compartilhamento", {
+        metadata: { metodo: "clipboard" },
+      });
       toast.success("Link copiado!");
     } catch {
       toast("Copie o link: " + url);

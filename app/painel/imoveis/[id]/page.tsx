@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { getSessao } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ImovelForm, type ImovelEditavel } from "../_components/imovel-form";
+import { buscarMetricasEngajamentoImoveis } from "@/lib/engajamento/imoveis";
+import { EngajamentoImovelCard } from "../_components/engajamento-imovel";
 
 export default async function EditarImovelPage({
   params,
@@ -35,6 +37,10 @@ export default async function EditarImovelPage({
   if (!imovelRes.data) notFound();
 
   const servico = servicoRes.data;
+  const [metricas7d, metricas30d] = await Promise.all([
+    buscarMetricasEngajamentoImoveis([id], 7),
+    buscarMetricasEngajamentoImoveis([id], 30),
+  ]);
   const imovel = {
     ...imovelRes.data,
     servico_juridico_pacote: servico?.pacote ?? "nao_contratar",
@@ -50,6 +56,10 @@ export default async function EditarImovelPage({
           Atualize os dados e salve.
         </p>
       </div>
+      <EngajamentoImovelCard
+        seteDias={metricas7d.get(id)!}
+        trintaDias={metricas30d.get(id)!}
+      />
       <ImovelForm imovel={imovel} usuarioId={sessao.user.id} />
     </div>
   );

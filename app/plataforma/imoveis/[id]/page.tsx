@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { BotaoInteresse } from "./_components/botao-interesse";
 import { AcoesImovel } from "./_components/acoes-imovel";
+import { EngajamentoTracker } from "./_components/engajamento-tracker";
 import { ImovelCard, type ImovelCardData } from "@/components/publico/imovel-card";
 import { infoDoBairro } from "./_bairros";
 import { SITE, imovelLd, breadcrumbLd, slugBairro } from "@/lib/seo";
@@ -172,6 +173,7 @@ export default async function ImovelDetalhePage({
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6 md:py-10">
+      <EngajamentoTracker imovelId={imovel.id} />
       {jsonld.map((bloco, i) => (
         <script
           key={i}

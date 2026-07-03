@@ -59,6 +59,34 @@ check(
   "anon conseguiu ler endereco de imovel ativo",
 );
 
+const { data: eventoEngajamento, error: eEngajamentoAdmin } = await admin
+  .from("imovel_engajamento_eventos")
+  .insert({
+    imovel_id: imovel.id,
+    tipo: "visualizacao_detalhe",
+    visitante_hash: "hash-smoke",
+    origem: "smoke",
+    referrer_host: "example.test",
+    utm_source: "teste",
+  })
+  .select("id")
+  .single();
+check(
+  "engajamento: service_role registra visualizacao",
+  !eEngajamentoAdmin && eventoEngajamento?.id,
+  eEngajamentoAdmin?.message,
+);
+
+const { data: eventosAnon, error: eEngajamentoAnon } = await anon
+  .from("imovel_engajamento_eventos")
+  .select("id")
+  .eq("imovel_id", imovel.id);
+check(
+  "engajamento: anon nao le eventos brutos",
+  !!eEngajamentoAnon || (eventosAnon?.length ?? 0) === 0,
+  "anon conseguiu ler eventos de engajamento",
+);
+
 const comp = createClient(URL, process.env.ANON);
 await comp.auth.signInWithPassword({ email: "comp@teste.local", password: senha });
 const prop = createClient(URL, process.env.ANON);

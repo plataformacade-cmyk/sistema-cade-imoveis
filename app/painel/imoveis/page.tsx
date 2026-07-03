@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { arquivarImovel } from "@/actions/imoveis";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { buscarMetricasEngajamentoImoveis } from "@/lib/engajamento/imoveis";
+import { EngajamentoResumoTabela } from "./_components/engajamento-imovel";
 import {
   Table,
   TableBody,
@@ -74,6 +76,10 @@ export default async function ImoveisPage() {
     .order("criado_em", { ascending: false });
 
   const imoveis = (data ?? []) as Imovel[];
+  const metricas = await buscarMetricasEngajamentoImoveis(
+    imoveis.map((imovel) => imovel.id),
+    30,
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -112,6 +118,7 @@ export default async function ImoveisPage() {
                 <TableHead>Tipo</TableHead>
                 <TableHead>Valor</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Engajamento</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -146,6 +153,9 @@ export default async function ImoveisPage() {
                       <Badge variant={STATUS_VARIANT[i.status] ?? "outline"}>
                         {STATUS_LABEL[i.status] ?? i.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <EngajamentoResumoTabela metrica={metricas.get(i.id)!} />
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
