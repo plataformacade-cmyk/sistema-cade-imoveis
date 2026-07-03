@@ -22,6 +22,7 @@ function revalidarContatoExterno(negocioId: string) {
   revalidatePath(`/painel/negocios/${negocioId}`);
   revalidatePath(`/painel/negocios/${negocioId}/documentos`);
   revalidatePath(`/painel/negocios/${negocioId}/contrato`);
+  revalidatePath(`/painel/negocios/${negocioId}/cartorial`);
   revalidatePath("/painel/negocios");
   revalidatePath("/painel/notificacoes");
   revalidatePath("/painel/observabilidade");

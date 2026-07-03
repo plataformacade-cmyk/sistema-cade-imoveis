@@ -44,6 +44,12 @@ export type Evento =
   | "contrato_reprovado"
   | "contrato_validado"
   | "contrato_comprovante_sinal_anexado"
+  | "cartorial_fluxo_iniciado"
+  | "cartorial_status_mudado"
+  | "cartorial_pendencia_criada"
+  | "cartorial_pendencia_resolvida"
+  | "cartorial_anexo_enviado"
+  | "cartorial_concluido"
   | "comissao_registrada"
   | "erro_nao_capturado";
 

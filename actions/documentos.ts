@@ -147,6 +147,7 @@ export async function enviarDocumento(
 
   revalidatePath(`/painel/negocios/${negocio_id}/documentos`);
   revalidatePath(`/painel/negocios/${negocio_id}/contrato`);
+  revalidatePath(`/painel/negocios/${negocio_id}/cartorial`);
   revalidatePath(`/painel/negocios/${negocio_id}`);
   return { message: "Documento enviado." };
 }
@@ -215,6 +216,7 @@ export async function mudarStatusDocumento(
 
   revalidatePath(`/painel/negocios/${data.negocio_id}/documentos`);
   revalidatePath(`/painel/negocios/${data.negocio_id}/contrato`);
+  revalidatePath(`/painel/negocios/${data.negocio_id}/cartorial`);
   revalidatePath(`/painel/negocios/${data.negocio_id}`);
   return { message: "Status do documento atualizado." };
 }

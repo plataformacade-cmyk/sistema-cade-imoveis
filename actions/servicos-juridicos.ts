@@ -34,6 +34,7 @@ function revalidarServico(params: {
     revalidatePath(`/painel/negocios/${params.negocioId}`);
     revalidatePath(`/painel/negocios/${params.negocioId}/documentos`);
     revalidatePath(`/painel/negocios/${params.negocioId}/contrato`);
+    revalidatePath(`/painel/negocios/${params.negocioId}/cartorial`);
     revalidatePath("/painel/negocios");
     revalidatePath("/painel/notificacoes");
   }

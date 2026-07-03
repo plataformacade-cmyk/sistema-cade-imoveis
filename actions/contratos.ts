@@ -112,6 +112,7 @@ async function carregarContrato(
 async function revalidarContrato(negocioId: string) {
   revalidatePath(`/painel/negocios/${negocioId}/contrato`);
   revalidatePath(`/painel/negocios/${negocioId}/documentos`);
+  revalidatePath(`/painel/negocios/${negocioId}/cartorial`);
   revalidatePath(`/painel/negocios/${negocioId}`);
   revalidatePath("/painel/observabilidade");
 }

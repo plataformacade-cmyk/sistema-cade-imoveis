@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FileText, FileSignature } from "lucide-react";
+import { ArrowLeft, FileText, FileSignature, Landmark } from "lucide-react";
 import { getSessao } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
@@ -171,6 +171,13 @@ export default async function NegocioDetalhePage({
           >
             <FileSignature className="size-4" />
             Contrato
+          </Link>
+          <Link
+            href={`/painel/negocios/${negocio.id}/cartorial`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <Landmark className="size-4" />
+            Cartorial
           </Link>
           <AbrirConversaButton negocioId={negocio.id} />
         </div>
