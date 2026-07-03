@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   Headset,
-  X,
-  SendHorizontal,
   Loader2,
-  UserRound,
+  MessageCircle,
+  SendHorizontal,
   Sparkles,
+  UserRound,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,12 +25,64 @@ type Contexto = {
   mensagens: { id: string; autor: Autor; corpo: string }[];
 };
 
+type VarianteUi = {
+  abrir: string;
+  fechar: string;
+  dialogo: string;
+  titulo: string;
+  subtitulo: string;
+  aguardando: string;
+  acaoHumana: string;
+  placeholder: string;
+  login: string;
+  escalado: string;
+  saudacaoInicial: string;
+  humanoLabel: string;
+};
+
+const UI_PUBLICA: VarianteUi = {
+  abrir: "Abrir consultor de imóveis",
+  fechar: "Fechar consultor de imóveis",
+  dialogo: "Chat do consultor de imóveis da Cadê Imóveis",
+  titulo: "Consultor Cadê",
+  subtitulo: "Compra, venda e aluguel",
+  aguardando: "Especialista a caminho...",
+  acaoHumana: "Falar com especialista",
+  placeholder: "Busque, anuncie ou tire uma dúvida...",
+  login: "Entre na sua conta para salvar a conversa e falar com um especialista.",
+  escalado:
+    "Pedido enviado para um especialista da Cadê. Ele vai responder por aqui em breve.",
+  saudacaoInicial:
+    "Oi! Sou o consultor da Cadê Imóveis. Posso ajudar você a buscar, anunciar ou tirar dúvidas sobre imóveis.",
+  humanoLabel: "Especialista",
+};
+
+const UI_SUPORTE: VarianteUi = {
+  abrir: "Abrir suporte",
+  fechar: "Fechar suporte",
+  dialogo: "Chat de suporte da Cadê Imóveis",
+  titulo: "Suporte Cadê",
+  subtitulo: "Resposta na hora",
+  aguardando: "Aguardando um atendente...",
+  acaoHumana: "Falar com um atendente",
+  placeholder: "Escreva sua dúvida...",
+  login: "Entre na sua conta para falar com um atendente e salvar a conversa.",
+  escalado:
+    "Pedido enviado para a equipe da Cadê. Um atendente humano vai responder por aqui em breve.",
+  saudacaoInicial: "Oi! Sou o assistente da Cadê Imóveis. Como posso ajudar?",
+  humanoLabel: "Atendente",
+};
+
 /**
- * Widget de suporte flutuante (canto inferior direito), em toda a plataforma.
- * Conversa com o agente da Cadê e, quando preciso, escala para um atendente
- * humano. Cliente leve: só carrega contexto quando o usuário abre o chat.
+ * Widget global: em rotas públicas atua como consultor imobiliário; no painel,
+ * mantém a linguagem operacional de suporte.
  */
 export function ChatSuporte() {
+  const pathname = usePathname();
+  const publico = !pathname?.startsWith("/painel");
+  const textoUi = publico ? UI_PUBLICA : UI_SUPORTE;
+  const IconeChat = publico ? MessageCircle : Headset;
+
   const [aberto, setAberto] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -36,9 +90,7 @@ export function ChatSuporte() {
   const [logado, setLogado] = useState(true);
   const [conversaId, setConversaId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
-  const [saudacaoTxt, setSaudacaoTxt] = useState(
-    "Oi! Sou o assistente da Cadê Imóveis. Como posso ajudar?",
-  );
+  const [saudacaoTxt, setSaudacaoTxt] = useState(textoUi.saudacaoInicial);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [texto, setTexto] = useState("");
   const fimRef = useRef<HTMLDivElement>(null);
@@ -49,7 +101,6 @@ export function ChatSuporte() {
     );
   }, []);
 
-  // Carrega o contexto + histórico na primeira vez que abre.
   const carregarContexto = useCallback(async () => {
     setCarregando(true);
     try {
@@ -59,7 +110,13 @@ export function ChatSuporte() {
       setSaudacaoTxt(data.saudacao);
       setConversaId(data.conversaId);
       setStatus(data.status ?? null);
-      setMsgs(data.mensagens.map((m) => ({ id: m.id, autor: m.autor, corpo: m.corpo })));
+      setMsgs(
+        data.mensagens.map((m) => ({
+          id: m.id,
+          autor: m.autor,
+          corpo: m.corpo,
+        })),
+      );
       setIniciado(true);
     } catch {
       setIniciado(true);
@@ -69,18 +126,27 @@ export function ChatSuporte() {
     }
   }, [rolar]);
 
-  useEffect(() => {
-    if (aberto && !iniciado) carregarContexto();
-  }, [aberto, iniciado, carregarContexto]);
+  function alternarAberto() {
+    const proximoAberto = !aberto;
+    setAberto(proximoAberto);
+    if (proximoAberto && !iniciado) void carregarContexto();
+  }
 
-  // Enquanto aguarda atendente humano, busca novas respostas a cada 12s.
   useEffect(() => {
     if (!aberto || status !== "aguardando_humano" || !conversaId) return;
     const t = setInterval(async () => {
       try {
-        const r = await fetch(`/api/suporte?conversaId=${conversaId}`, { cache: "no-store" });
+        const r = await fetch(`/api/suporte?conversaId=${conversaId}`, {
+          cache: "no-store",
+        });
         const data: Contexto = await r.json();
-        setMsgs(data.mensagens.map((m) => ({ id: m.id, autor: m.autor, corpo: m.corpo })));
+        setMsgs(
+          data.mensagens.map((m) => ({
+            id: m.id,
+            autor: m.autor,
+            corpo: m.corpo,
+          })),
+        );
         setStatus(data.status ?? null);
       } catch {
         /* silencioso */
@@ -115,7 +181,11 @@ export function ChatSuporte() {
     } catch {
       setMsgs((m) => [
         ...m,
-        { autor: "assistente", corpo: "Tive um problema para responder agora. Tente de novo em instantes." },
+        {
+          autor: "assistente",
+          corpo:
+            "Tive um problema para responder agora. Tente de novo em instantes.",
+        },
       ]);
     } finally {
       setEnviando(false);
@@ -137,8 +207,7 @@ export function ChatSuporte() {
           ...m,
           {
             autor: "assistente",
-            corpo:
-              "Pedido enviado para a equipe da Cadê. Um atendente humano vai responder por aqui em breve. 👍",
+            corpo: textoUi.escalado,
           },
         ]);
       }
@@ -148,51 +217,57 @@ export function ChatSuporte() {
   }
 
   const semMensagens = msgs.length === 0;
+  const saudacaoExibida = iniciado ? saudacaoTxt : textoUi.saudacaoInicial;
 
   return (
     <>
-      {/* Botão flutuante */}
       <button
         type="button"
-        onClick={() => setAberto((v) => !v)}
-        aria-label={aberto ? "Fechar suporte" : "Abrir suporte"}
+        onClick={alternarAberto}
+        aria-label={aberto ? textoUi.fechar : textoUi.abrir}
         aria-expanded={aberto}
         className={cn(
-          "fixed bottom-5 right-5 z-50 flex size-14 items-center justify-center rounded-full",
+          "fixed bottom-5 z-50 flex h-14 items-center justify-center rounded-full",
           "bg-primary text-primary-foreground shadow-lg shadow-primary/25 transition-transform",
           "hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2",
           "focus-visible:ring-ring focus-visible:ring-offset-2",
+          publico ? "left-5 gap-2 px-4" : "right-5 w-14",
         )}
       >
-        {aberto ? <X className="size-6" /> : <Headset className="size-6" />}
+        {aberto ? <X className="size-6" /> : <IconeChat className="size-6" />}
+        {!aberto && publico && (
+          <span className="hidden whitespace-nowrap text-sm font-semibold sm:inline">
+            Consultor de imóveis
+          </span>
+        )}
       </button>
 
-      {/* Painel */}
       {aberto && (
         <div
           role="dialog"
-          aria-label="Chat de suporte da Cadê Imóveis"
+          aria-label={textoUi.dialogo}
           className={cn(
-            "fixed bottom-24 right-5 z-50 flex w-[calc(100vw-2.5rem)] max-w-sm flex-col",
-            "overflow-hidden rounded-2xl border bg-card shadow-2xl",
-            "h-[min(34rem,calc(100vh-8rem))] motion-safe:animate-in motion-safe:fade-in",
-            "motion-safe:slide-in-from-bottom-4 motion-safe:duration-300",
+            "fixed bottom-24 z-50 flex w-[calc(100vw-2.5rem)] max-w-sm flex-col",
+            "h-[min(34rem,calc(100vh-8rem))] overflow-hidden rounded-2xl border bg-card shadow-2xl",
+            "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:duration-300",
+            publico ? "left-5" : "right-5",
           )}
           style={{
             animationTimingFunction: "cubic-bezier(0.16,1,0.3,1)",
           }}
         >
-          {/* Cabeçalho */}
           <div className="flex items-center gap-3 border-b bg-primary/5 px-4 py-3">
             <span className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Headset className="size-5" />
+              <IconeChat className="size-5" />
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-semibold leading-tight">Suporte Cadê</p>
+              <p className="text-sm font-semibold leading-tight">
+                {textoUi.titulo}
+              </p>
               <p className="text-xs text-muted-foreground">
                 {status === "aguardando_humano"
-                  ? "Aguardando um atendente…"
-                  : "Resposta na hora"}
+                  ? textoUi.aguardando
+                  : textoUi.subtitulo}
               </p>
             </div>
             <button
@@ -205,7 +280,6 @@ export function ChatSuporte() {
             </button>
           </div>
 
-          {/* Mensagens */}
           <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
             {carregando && (
               <div className="flex justify-center py-6 text-muted-foreground">
@@ -213,12 +287,15 @@ export function ChatSuporte() {
               </div>
             )}
 
-            {!carregando && (
-              <Balao autor="assistente" corpo={saudacaoTxt} />
-            )}
+            {!carregando && <Balao autor="assistente" corpo={saudacaoExibida} />}
 
             {msgs.map((m, i) => (
-              <Balao key={m.id ?? i} autor={m.autor} corpo={m.corpo} />
+              <Balao
+                key={m.id ?? i}
+                autor={m.autor}
+                corpo={m.corpo}
+                humanoLabel={textoUi.humanoLabel}
+              />
             ))}
 
             {enviando && (
@@ -231,7 +308,6 @@ export function ChatSuporte() {
             <div ref={fimRef} />
           </div>
 
-          {/* Ação: falar com atendente */}
           {logado && status !== "aguardando_humano" && !semMensagens && (
             <div className="border-t px-4 py-2">
               <button
@@ -241,12 +317,11 @@ export function ChatSuporte() {
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline disabled:opacity-50"
               >
                 <UserRound className="size-3.5" />
-                Falar com um atendente
+                {textoUi.acaoHumana}
               </button>
             </div>
           )}
 
-          {/* Entrada */}
           <form onSubmit={enviar} className="flex items-end gap-2 border-t p-3">
             <textarea
               value={texto}
@@ -258,7 +333,7 @@ export function ChatSuporte() {
                 }
               }}
               rows={1}
-              placeholder="Escreva sua dúvida…"
+              placeholder={textoUi.placeholder}
               className={cn(
                 "max-h-28 flex-1 resize-none rounded-lg border bg-background px-3 py-2 text-sm",
                 "outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring",
@@ -279,7 +354,7 @@ export function ChatSuporte() {
           {!logado && (
             <p className="px-4 pb-3 text-center text-[11px] text-muted-foreground">
               <Sparkles className="mr-1 inline size-3" />
-              Entre na sua conta para falar com um atendente e salvar a conversa.
+              {textoUi.login}
             </p>
           )}
         </div>
@@ -288,7 +363,15 @@ export function ChatSuporte() {
   );
 }
 
-function Balao({ autor, corpo }: { autor: Autor; corpo: string }) {
+function Balao({
+  autor,
+  corpo,
+  humanoLabel = "Atendente",
+}: {
+  autor: Autor;
+  corpo: string;
+  humanoLabel?: string;
+}) {
   const doUsuario = autor === "usuario";
   return (
     <div className={cn("flex", doUsuario ? "justify-end" : "justify-start")}>
@@ -304,7 +387,7 @@ function Balao({ autor, corpo }: { autor: Autor; corpo: string }) {
       >
         {autor === "humano" && (
           <span className="mb-0.5 flex items-center gap-1 text-[11px] font-medium opacity-70">
-            <UserRound className="size-3" /> Atendente
+            <UserRound className="size-3" /> {humanoLabel}
           </span>
         )}
         {corpo}
