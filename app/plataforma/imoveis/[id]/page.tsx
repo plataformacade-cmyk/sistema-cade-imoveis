@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
 import {
   ArrowLeft,
@@ -17,26 +16,14 @@ import { AcoesImovel } from "./_components/acoes-imovel";
 import { ImovelCard, type ImovelCardData } from "@/components/publico/imovel-card";
 import { infoDoBairro } from "./_bairros";
 import { SITE, imovelLd, breadcrumbLd, slugBairro } from "@/lib/seo";
-
-type ImovelDetalhe = {
-  id: string;
-  logradouro: string | null;
-  numero: string | null;
-  complemento: string | null;
-  cep: string | null;
-  bairro: string | null;
-  cidade: string | null;
-  uf: string | null;
-  tipo: string | null;
-  area_m2: number | null;
-  quartos: number | null;
-  vagas: number | null;
-  ano_construcao: number | null;
-  caracteristicas: Record<string, unknown> | null;
-  valor_anuncio: number | null;
-  fotos: string[] | null;
-  status: string;
-};
+import { getSessao } from "@/lib/auth";
+import {
+  buscarImovelPublicoDetalhe,
+  buscarImoveisPublicos,
+  enderecoCompleto,
+  enderecoPublico,
+  usuarioPodeVerEnderecoImovel,
+} from "@/lib/imoveis/privacidade-endereco";
 
 const TIPO_LABEL: Record<string, string> = {
   casa: "Casa",
@@ -51,18 +38,11 @@ const moeda = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 0,
 });
 
-/** Rótulo legível pra uma chave de característica (snake_case → "Snake case"). */
 function rotuloCaracteristica(chave: string): string {
   const limpo = chave.replace(/[_-]+/g, " ").trim();
   return limpo.charAt(0).toUpperCase() + limpo.slice(1);
 }
 
-/**
- * Extrai comodidades do jsonb `caracteristicas`. Aceita:
- *  - { piscina: true, churrasqueira: true } → lista as chaves verdadeiras
- *  - { piscina: "Piscina aquecida" } → usa o valor
- *  - { amenidades: ["Piscina", "Academia"] } → usa o array
- */
 function extrairComodidades(c: Record<string, unknown> | null): string[] {
   if (!c) return [];
   const out: string[] = [];
@@ -86,57 +66,47 @@ export default async function ImovelDetalhePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const [imovel, sessao] = await Promise.all([
+    buscarImovelPublicoDetalhe(id),
+    getSessao(),
+  ]);
 
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("imoveis")
-    .select(
-      "id, logradouro, numero, complemento, cep, bairro, cidade, uf, tipo, area_m2, quartos, vagas, ano_construcao, caracteristicas, valor_anuncio, fotos, status",
-    )
-    .eq("id", id)
-    .single();
+  if (!imovel) notFound();
 
-  // Só imóvel ativo aparece no marketplace público.
-  if (!data || data.status !== "ativo") notFound();
-
-  const imovel = data as ImovelDetalhe;
+  const podeVerEndereco = await usuarioPodeVerEnderecoImovel(imovel, sessao);
   const fotos = imovel.fotos ?? [];
-  const tipoLabel = TIPO_LABEL[imovel.tipo ?? ""] ?? imovel.tipo ?? "Imóvel";
+  const tipoLabel = TIPO_LABEL[imovel.tipo ?? ""] ?? imovel.tipo ?? "Imovel";
   const titulo = `${tipoLabel}${imovel.bairro ? ` em ${imovel.bairro}` : ""}`;
   const cidadeUf =
     imovel.cidade && imovel.uf
       ? `${imovel.cidade}/${imovel.uf}`
       : (imovel.cidade ?? "");
-  const local = [imovel.bairro, cidadeUf].filter(Boolean).join(" · ");
+  const local = enderecoPublico(imovel);
   const ruaNumero = [imovel.logradouro, imovel.numero]
     .filter(Boolean)
     .join(", ");
-  const enderecoCompleto = [
-    ruaNumero,
-    imovel.complemento,
-    [imovel.bairro, cidadeUf].filter(Boolean).join(" · "),
-    imovel.cep ? `CEP ${imovel.cep}` : null,
-  ]
-    .filter(Boolean)
-    .join(" — ");
+  const localizacaoHeader = podeVerEndereco
+    ? [ruaNumero, local].filter(Boolean).join(" - ")
+    : local;
+  const enderecoVisivel = podeVerEndereco
+    ? enderecoCompleto(imovel)
+    : local || "Uberlandia/MG";
+  const consultaMapa = podeVerEndereco
+    ? [ruaNumero, imovel.bairro, cidadeUf].filter(Boolean).join(", ")
+    : [imovel.bairro, cidadeUf].filter(Boolean).join(", ");
   const comodidades = extrairComodidades(imovel.caracteristicas);
   const bairroInfo = infoDoBairro(imovel.bairro);
 
-  // Imóveis relacionados: mesmo bairro primeiro; completa com o mesmo tipo.
-  const colunasCard =
-    "id, tipo, bairro, cidade, quartos, vagas, area_m2, valor_anuncio, fotos";
   const relacionados: ImovelCardData[] = [];
   const vistos = new Set<string>([imovel.id]);
   async function buscarRel(coluna: "bairro" | "tipo", valor: string | null) {
     if (!valor || relacionados.length >= 4) return;
-    const { data: lista } = await supabase
-      .from("imoveis")
-      .select(colunasCard)
-      .eq("status", "ativo")
-      .eq(coluna, valor)
-      .neq("id", imovel.id)
-      .limit(8);
-    for (const r of (lista as ImovelCardData[]) ?? []) {
+    const lista = await buscarImoveisPublicos(
+      coluna === "bairro"
+        ? { bairro: valor, limit: 8 }
+        : { tipo: valor, limit: 8 },
+    );
+    for (const r of lista as ImovelCardData[]) {
       if (relacionados.length >= 4 || vistos.has(r.id)) continue;
       vistos.add(r.id);
       relacionados.push(r);
@@ -149,10 +119,11 @@ export default async function ImovelDetalhePage({
   const jsonld = [
     imovelLd({
       titulo,
-      descricao: `${tipoLabel} em ${imovel.bairro ?? "Uberlândia"} com ${imovel.area_m2 ?? "—"} m². Negocie direto pela Cadê Imóveis.`,
+      descricao: `${tipoLabel} em ${imovel.bairro ?? "Uberlandia"} com ${imovel.area_m2 ?? "-"} m2. Negocie direto pela Cade Imoveis.`,
       url: urlImovel,
       fotos: fotos.slice(0, 6),
       preco: imovel.valor_anuncio,
+      enderecoExato: podeVerEndereco,
       logradouro: imovel.logradouro,
       numero: imovel.numero,
       bairro: imovel.bairro,
@@ -163,8 +134,8 @@ export default async function ImovelDetalhePage({
       quartos: imovel.quartos,
     }),
     breadcrumbLd([
-      { nome: "Início", url: "/" },
-      { nome: "Imóveis", url: "/plataforma" },
+      { nome: "Inicio", url: "/" },
+      { nome: "Imoveis", url: "/plataforma" },
       ...(imovel.bairro
         ? [{ nome: imovel.bairro, url: `/imoveis-em/${slugBairro(imovel.bairro)}` }]
         : []),
@@ -186,7 +157,7 @@ export default async function ImovelDetalhePage({
     imovel.area_m2 != null && {
       icon: Ruler,
       valor: `${imovel.area_m2}`,
-      label: "m² de área",
+      label: "m2 de area",
     },
     imovel.ano_construcao != null && {
       icon: CalendarDays,
@@ -220,7 +191,6 @@ export default async function ImovelDetalhePage({
         Voltar para a busca
       </Link>
 
-      {/* GALERIA estilo Airbnb */}
       <section className="mt-4">
         {fotos.length > 0 ? (
           <div className="grid gap-3 md:h-[28rem] md:grid-cols-2">
@@ -238,7 +208,7 @@ export default async function ImovelDetalhePage({
                   <img
                     key={idx}
                     src={src}
-                    alt={`${titulo} — foto ${idx + 2}`}
+                    alt={`${titulo} - foto ${idx + 2}`}
                     loading="lazy"
                     className="h-36 w-full rounded-2xl object-cover md:h-[13.4rem]"
                   />
@@ -248,11 +218,10 @@ export default async function ImovelDetalhePage({
           </div>
         ) : (
           <div className="flex h-72 w-full items-center justify-center rounded-2xl bg-muted text-sm text-muted-foreground">
-            Sem fotos disponíveis
+            Sem fotos disponiveis
           </div>
         )}
 
-        {/* Miniaturas adicionais (a partir da 6ª foto) */}
         {fotos.length > 5 && (
           <div className="mt-3 flex flex-wrap gap-3">
             {fotos.slice(5).map((src, idx) => (
@@ -260,7 +229,7 @@ export default async function ImovelDetalhePage({
               <img
                 key={idx}
                 src={src}
-                alt={`${titulo} — foto ${idx + 6}`}
+                alt={`${titulo} - foto ${idx + 6}`}
                 loading="lazy"
                 className="size-24 rounded-xl object-cover"
               />
@@ -269,24 +238,21 @@ export default async function ImovelDetalhePage({
         )}
       </section>
 
-      {/* CONTEÚDO + CARD STICKY */}
       <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_22rem]">
-        {/* Coluna principal */}
         <div className="flex flex-col gap-8">
           <header className="flex flex-col gap-3 border-b pb-6">
             <span className="w-fit rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
               {tipoLabel}
             </span>
             <h1 className="text-3xl font-semibold tracking-tight">{titulo}</h1>
-            {(ruaNumero || local) && (
+            {localizacaoHeader && (
               <p className="flex items-center gap-1.5 text-muted-foreground">
                 <MapPin className="size-4 shrink-0" />
-                {[ruaNumero, local].filter(Boolean).join(" · ")}
+                {localizacaoHeader}
               </p>
             )}
           </header>
 
-          {/* Specs com ícones */}
           {specs.length > 0 && (
             <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               {specs.map((s, i) => {
@@ -309,14 +275,13 @@ export default async function ImovelDetalhePage({
             </section>
           )}
 
-          {/* Descrição */}
           <section className="flex flex-col gap-3">
-            <h2 className="text-xl font-semibold">Sobre o imóvel</h2>
+            <h2 className="text-xl font-semibold">Sobre o imovel</h2>
             <p className="leading-relaxed text-muted-foreground">
               {tipoLabel}
               {imovel.bairro ? ` localizado em ${imovel.bairro}` : ""}
               {cidadeUf ? `, ${cidadeUf}` : ""}.
-              {imovel.area_m2 != null ? ` Com ${imovel.area_m2} m²` : ""}
+              {imovel.area_m2 != null ? ` Com ${imovel.area_m2} m2` : ""}
               {imovel.quartos != null
                 ? `, ${imovel.quartos} ${imovel.quartos === 1 ? "quarto" : "quartos"}`
                 : ""}
@@ -328,7 +293,6 @@ export default async function ImovelDetalhePage({
             </p>
           </section>
 
-          {/* Comodidades */}
           {comodidades.length > 0 && (
             <section className="flex flex-col gap-3">
               <h2 className="text-xl font-semibold">Comodidades</h2>
@@ -345,19 +309,30 @@ export default async function ImovelDetalhePage({
             </section>
           )}
 
-          {/* Mapa (placeholder) */}
           <section className="flex flex-col gap-3">
-            <h2 className="text-xl font-semibold">Localização</h2>
+            <h2 className="text-xl font-semibold">Localizacao</h2>
             <div className="overflow-hidden rounded-2xl border">
-              <div className="flex items-center gap-2 bg-muted/40 px-4 py-3">
-                <MapPin className="size-4 shrink-0 text-primary" />
-                <p className="text-sm font-medium">{enderecoCompleto || local}</p>
+              <div className="flex items-start gap-2 bg-muted/40 px-4 py-3">
+                <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-medium">{enderecoVisivel}</p>
+                  {!podeVerEndereco && (
+                    <p className="text-xs text-muted-foreground">
+                      Localizacao aproximada. O endereco completo e liberado
+                      apenas dentro da negociacao.
+                    </p>
+                  )}
+                </div>
               </div>
               <iframe
-                title={`Mapa de ${ruaNumero || local}`}
+                title={
+                  podeVerEndereco
+                    ? `Mapa de ${ruaNumero || local}`
+                    : `Mapa aproximado de ${local || "Uberlandia/MG"}`
+                }
                 src={`https://www.google.com/maps?q=${encodeURIComponent(
-                  [ruaNumero, imovel.bairro, cidadeUf].filter(Boolean).join(", "),
-                )}&z=15&output=embed`}
+                  consultaMapa || "Uberlandia, MG",
+                )}&z=${podeVerEndereco ? "15" : "13"}&output=embed`}
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
                 className="h-72 w-full border-0"
@@ -365,12 +340,10 @@ export default async function ImovelDetalhePage({
             </div>
           </section>
 
-          {/* Sobre o bairro */}
           {imovel.bairro && (
             <section className="flex flex-col gap-3">
               <h2 className="text-xl font-semibold">
-                Sobre o bairro{" "}
-                <span className="text-primary">{imovel.bairro}</span>
+                Sobre o bairro <span className="text-primary">{imovel.bairro}</span>
               </h2>
               <p className="leading-relaxed text-muted-foreground">
                 {bairroInfo.descricao}
@@ -389,7 +362,6 @@ export default async function ImovelDetalhePage({
           )}
         </div>
 
-        {/* Card lateral STICKY */}
         <aside className="lg:sticky lg:top-24 lg:h-fit">
           <div className="flex flex-col gap-4 rounded-2xl border bg-card p-6 shadow-sm">
             <div>
@@ -407,19 +379,18 @@ export default async function ImovelDetalhePage({
 
             <p className="flex items-start gap-2 text-xs text-muted-foreground">
               <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
-              Seu interesse é registrado com segurança. O anunciante será
+              Seu interesse e registrado com seguranca. O anunciante sera
               notificado para entrar em contato.
             </p>
           </div>
         </aside>
       </div>
 
-      {/* IMÓVEIS RELACIONADOS */}
       {relacionados.length > 0 && (
         <section className="mt-14 border-t pt-10">
           <div className="mb-5 flex items-end justify-between gap-4">
             <h2 className="text-2xl font-semibold tracking-tight">
-              Imóveis relacionados
+              Imoveis relacionados
             </h2>
             <Link
               href={
@@ -429,7 +400,7 @@ export default async function ImovelDetalhePage({
               }
               className="shrink-0 text-sm font-medium text-primary hover:underline"
             >
-              Ver mais {imovel.bairro ? `em ${imovel.bairro}` : "imóveis"} →
+              Ver mais {imovel.bairro ? `em ${imovel.bairro}` : "imoveis"} -&gt;
             </Link>
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">

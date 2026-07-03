@@ -5,7 +5,6 @@ import { buttonVariants } from "@/components/ui/button";
 import { SiteHeader } from "@/components/publico/site-header";
 import { SiteFooter } from "@/components/publico/site-footer";
 import { ImovelCard, type ImovelCardData } from "@/components/publico/imovel-card";
-import { createClient } from "@/lib/supabase/server";
 import { Reveal } from "@/components/publico/reveal";
 import { IntroMarca } from "@/components/publico/intro-marca";
 import { HomeHero } from "./_home/hero";
@@ -13,6 +12,7 @@ import { HomeComoFunciona } from "./_home/como-funciona";
 import { HomeBairros } from "./_home/bairros";
 import { HomeAppEmBreve } from "./_home/app-em-breve";
 import { HomeCtaAnuncie } from "./_home/cta-anuncie";
+import { buscarImoveisPublicos } from "@/lib/imoveis/privacidade-endereco";
 
 export const metadata: Metadata = {
   title: "Cadê Imóveis — encontre seu próximo lar em Uberlândia",
@@ -89,17 +89,7 @@ const DESTAQUES_DEMO: ImovelCardData[] = [
 ];
 
 export default async function Home() {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("imoveis")
-    .select(
-      "id, tipo, bairro, cidade, quartos, vagas, area_m2, valor_anuncio, fotos",
-    )
-    .eq("status", "ativo")
-    .order("criado_em", { ascending: false })
-    .limit(8);
-
-  const reais = (data ?? []) as ImovelCardData[];
+  const reais = (await buscarImoveisPublicos({ limit: 8 })) as ImovelCardData[];
   const destaques = reais.length > 0 ? reais : DESTAQUES_DEMO;
 
   return (

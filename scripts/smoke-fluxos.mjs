@@ -49,8 +49,15 @@ const { data: imovel } = await admin
 check("imovel ativo criado", !!imovel?.id);
 
 const anon = createClient(URL, process.env.ANON);
-const { data: vit } = await anon.from("imoveis").select("id").eq("status", "ativo");
-check("vitrine publica (anon)", (vit?.length ?? 0) >= 1, `rows=${vit?.length}`);
+const { error: eImovelAnon } = await anon
+  .from("imoveis")
+  .select("id, logradouro, numero, cep")
+  .eq("status", "ativo");
+check(
+  "anon: nao le imoveis direto pela Data API",
+  !!eImovelAnon,
+  "anon conseguiu ler endereco de imovel ativo",
+);
 
 const comp = createClient(URL, process.env.ANON);
 await comp.auth.signInWithPassword({ email: "comp@teste.local", password: senha });

@@ -124,6 +124,7 @@ export function imovelLd(i: {
   url: string;
   fotos: string[];
   preco: number | null;
+  enderecoExato?: boolean;
   logradouro?: string | null;
   numero?: string | null;
   bairro?: string | null;
@@ -133,6 +134,10 @@ export function imovelLd(i: {
   area?: number | null;
   quartos?: number | null;
 }) {
+  const streetAddress = i.enderecoExato
+    ? [i.logradouro, i.numero].filter(Boolean).join(", ") || undefined
+    : undefined;
+
   return {
     "@context": "https://schema.org",
     "@type": "RealEstateListing",
@@ -143,10 +148,10 @@ export function imovelLd(i: {
     datePosted: undefined,
     address: {
       "@type": "PostalAddress",
-      streetAddress: [i.logradouro, i.numero].filter(Boolean).join(", ") || undefined,
+      streetAddress,
       addressLocality: i.cidade ?? SITE.cidade,
       addressRegion: i.uf ?? SITE.uf,
-      postalCode: i.cep ?? undefined,
+      postalCode: i.enderecoExato ? (i.cep ?? undefined) : undefined,
       addressCountry: "BR",
     },
     ...(i.area || i.quartos

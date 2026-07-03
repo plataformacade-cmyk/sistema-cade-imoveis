@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { SITE, slugBairro } from "@/lib/seo";
 import { POSTS } from "./blog/_posts";
 import { PERFIS_LISTA } from "./como-funciona/_perfis";
@@ -37,8 +37,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let imoveis: MetadataRoute.Sitemap = [];
   let bairros: MetadataRoute.Sitemap = [];
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
+    const admin = createAdminClient();
+    const { data } = await admin
       .from("imoveis")
       .select("id, bairro, atualizado_em")
       .eq("status", "ativo");

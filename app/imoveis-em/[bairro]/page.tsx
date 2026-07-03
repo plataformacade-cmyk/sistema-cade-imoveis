@@ -6,9 +6,9 @@ import { SiteFooter } from "@/components/publico/site-footer";
 import { Reveal } from "@/components/publico/reveal";
 import { buttonVariants } from "@/components/ui/button";
 import { ImovelCard, type ImovelCardData } from "@/components/publico/imovel-card";
-import { createClient } from "@/lib/supabase/server";
 import { SITE, slugBairro, breadcrumbLd, moedaBRL } from "@/lib/seo";
 import { infoDoBairro } from "../../plataforma/imoveis/[id]/_bairros";
+import { buscarImoveisPublicos } from "@/lib/imoveis/privacidade-endereco";
 
 // Bairros conhecidos (pré-renderizados); outros renderizam sob demanda.
 const BAIRROS_CONHECIDOS = [
@@ -29,15 +29,9 @@ function tituloCase(slug: string) {
 }
 
 async function buscar(slug: string) {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("imoveis")
-    .select(
-      "id, tipo, bairro, cidade, quartos, vagas, area_m2, valor_anuncio, fotos",
-    )
-    .eq("status", "ativo")
-    .order("criado_em", { ascending: false });
-  const todos = (data ?? []) as (ImovelCardData & { bairro: string | null })[];
+  const todos = (await buscarImoveisPublicos({
+    limit: 500,
+  })) as (ImovelCardData & { bairro: string | null })[];
   const noBairro = todos.filter(
     (i) => i.bairro && slugBairro(i.bairro) === slug,
   );

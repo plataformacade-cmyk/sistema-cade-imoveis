@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ImovelCard, type ImovelCardData } from "@/components/publico/imovel-card";
 import { Reveal } from "@/components/publico/reveal";
 import { Search, SlidersHorizontal, Home } from "lucide-react";
+import { buscarImoveisPublicos } from "@/lib/imoveis/privacidade-endereco";
 
 const TIPO_LABEL: Record<string, string> = {
   casa: "Casa",
@@ -56,31 +56,15 @@ export default async function VitrinePage({
   const valorMin = num(sp.valor_min);
   const valorMax = num(sp.valor_max);
 
-  const supabase = await createClient();
-  let query = supabase
-    .from("imoveis")
-    .select(
-      "id, bairro, cidade, uf, tipo, area_m2, quartos, vagas, valor_anuncio, fotos",
-    )
-    .eq("status", "ativo")
-    .order("criado_em", { ascending: false })
-    .limit(60);
-
-  if (q) {
-    const termo = `%${q}%`;
-    query = query.or(
-      `logradouro.ilike.${termo},bairro.ilike.${termo},cidade.ilike.${termo}`,
-    );
-  }
-  if (tipo && (TIPOS as readonly string[]).includes(tipo))
-    query = query.eq("tipo", tipo);
-  if (bairro) query = query.ilike("bairro", `%${bairro}%`);
-  if (quartosMin != null) query = query.gte("quartos", quartosMin);
-  if (valorMin != null) query = query.gte("valor_anuncio", valorMin);
-  if (valorMax != null) query = query.lte("valor_anuncio", valorMax);
-
-  const { data } = await query;
-  const imoveis = (data ?? []) as ImovelCardData[];
+  const imoveis = (await buscarImoveisPublicos({
+    q,
+    tipo: tipo && (TIPOS as readonly string[]).includes(tipo) ? tipo : undefined,
+    bairro,
+    quartosMin,
+    valorMin,
+    valorMax,
+    limit: 60,
+  })) as ImovelCardData[];
 
   const temFiltro =
     !!q ||
@@ -133,7 +117,7 @@ export default async function VitrinePage({
               id="q"
               name="q"
               defaultValue={q ?? ""}
-              placeholder="Bairro, rua ou cidade"
+              placeholder="Bairro, cidade ou tipo"
               className={campoInput}
             />
           </div>
