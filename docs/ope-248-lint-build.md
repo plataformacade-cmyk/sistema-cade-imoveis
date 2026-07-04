@@ -25,6 +25,8 @@ O lint ainda reporta warnings `@next/next/no-img-element` em páginas públicas 
 
 Esses warnings não quebram o comando (`exit code 0`). A troca para `next/image` deve ser tratada em task própria ou ajuste futuro de performance, porque exige revisar dimensões, domínios/URLs externas e comportamento visual das imagens geradas/importadas do blog.
 
+`npm.cmd audit --omit=dev` reporta 2 vulnerabilidades moderadas em `next` por dependência interna de `postcss <8.5.10`. A correção sugerida pelo npm exige `npm audit fix --force` e faria downgrade quebrado para `next@9.3.3`; portanto, não deve ser aplicada automaticamente. A mitigação correta é acompanhar atualização segura do Next 16 quando disponível.
+
 ## Critério atual
 
 Para novas tasks, o mínimo obrigatório é:

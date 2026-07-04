@@ -1,13 +1,13 @@
 name: Agente de conteúdo (blog Cadê)
 
-# Roda 3x por dia (08:00, 13:00 e 18:00 BRT = 11/16/21 UTC). Gera artigos
-# otimizados de SEO/GEO e dá commit — o push publica na Vercel.
+# Roda 3x por dia (08:00, 13:00 e 18:00 BRT = 11/16/21 UTC).
+# Gera artigos de SEO/GEO e dá commit; o push publica na Vercel.
 on:
   schedule:
     - cron: "0 11 * * *"
     - cron: "0 16 * * *"
     - cron: "0 21 * * *"
-  workflow_dispatch: {} # permite rodar manualmente pelo botão do GitHub
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -20,12 +20,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Instalar dependências
+        run: npm ci
       - name: Gerar artigos do dia
         env:
-          # ⚠️ Configure estes secrets no GitHub (Settings > Secrets > Actions).
-          # Sem eles, o script roda em dry-run (artigo de exemplo).
+          # Sem chaves, o script roda em dry-run/fallback seguro.
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODELO: ${{ secrets.OPENAI_MODELO }}
           IDEOGRAM_API_KEY: ${{ secrets.IDEOGRAM_API_KEY }}
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+          PERPLEXITY_MODELO: ${{ secrets.PERPLEXITY_MODELO }}
+          HIGGSFIELD_API_KEY: ${{ secrets.HIGGSFIELD_API_KEY }}
+          HIGGSFIELD_ENDPOINT: ${{ secrets.HIGGSFIELD_ENDPOINT }}
         run: node scripts/agente-conteudo.mjs --quantos 1
       - name: Commit e push
         run: |
