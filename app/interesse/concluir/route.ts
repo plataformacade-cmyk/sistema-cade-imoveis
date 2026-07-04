@@ -43,6 +43,6 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.redirect(
-    new URL(`/painel/negocios/${resultado.negocioId}`, url),
+    new URL(`/painel/negocios/${resultado.negocioId}#qualificacao`, url),
   );
 }

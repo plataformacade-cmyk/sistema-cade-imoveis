@@ -70,5 +70,5 @@ export async function demonstrarInteresse(
     },
   });
 
-  redirect(`/painel/negocios/${resultado.negocioId}`);
+  redirect(`/painel/negocios/${resultado.negocioId}#qualificacao`);
 }

@@ -22,6 +22,7 @@ const EVENTOS = [
   "imovel_editado",
   "imovel_arquivado",
   "interesse_demonstrado",
+  "lead_qualificacao_salva",
   "negocio_aberto",
   "negocio_status_mudado",
   "visita_agendada",

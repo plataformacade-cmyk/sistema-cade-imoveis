@@ -22,6 +22,8 @@ export type Evento =
   | "conta_excluida"
   | "corretor_cadastrado"
   | "interesse_demonstrado"
+  | "lead_qualificacao_salva"
+  | "lead_qualificacao_notificada"
   | "mensagem_enviada"
   | "mensagem_contato_bloqueado"
   | "proposta_enviada"

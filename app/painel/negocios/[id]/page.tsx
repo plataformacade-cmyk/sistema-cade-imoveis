@@ -35,6 +35,10 @@ import { ServicoJuridicoCard } from "../_components/servico-juridico-card";
 import { ContatoExternoCard } from "../_components/contato-externo-card";
 import { FollowupsExternosCard } from "../_components/followups-externos-card";
 import { SuportePosConclusaoCard } from "../_components/suporte-pos-conclusao-card";
+import {
+  QualificacaoLeadCard,
+  type QualificacaoLeadResumo,
+} from "../_components/qualificacao-lead-card";
 import { carregarEstadoContatoExterno } from "@/lib/contato-externo-server";
 import type { FollowupExternoResumo } from "@/lib/followups-externos";
 import { rotuloPapelNegocio } from "@/lib/negocios/tipo";
@@ -157,6 +161,15 @@ export default async function NegocioDetalhePage({
         .order("prazo_em", { ascending: true })
     : { data: [] };
   const followups = (followupsData ?? []) as unknown as FollowupExternoResumo[];
+  const { data: qualificacaoData } = await supabase
+    .from("negocio_qualificacoes")
+    .select(
+      "id, negocio_id, comprador_id, respostas, resumo, temperatura, concluida_em",
+    )
+    .eq("negocio_id", negocio.id)
+    .maybeSingle();
+  const qualificacao =
+    (qualificacaoData as unknown as QualificacaoLeadResumo | null) ?? null;
   const podeAbrirSuportePosConclusao =
     negocio.status === "concluido" &&
     papeisUsuario.some((papel) => ["comprador", "proprietario"].includes(papel));
@@ -253,6 +266,13 @@ export default async function NegocioDetalhePage({
           </dl>
         </CardContent>
       </Card>
+
+      <QualificacaoLeadCard
+        negocioId={negocio.id}
+        qualificacao={qualificacao}
+        papeisUsuario={papeisUsuario}
+        tipoNegocio={tipoNegocio}
+      />
 
       {(servico || podeContratarServico) && (
         <ServicoJuridicoCard
