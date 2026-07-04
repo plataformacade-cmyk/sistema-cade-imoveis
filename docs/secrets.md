@@ -30,7 +30,7 @@ Este documento e o inventario canonico de variaveis para a `OPE-208`. Ele nao de
 | `IDEOGRAM_API_KEY` | local, GitHub Actions | Sim para capa real | Workflow atual consome essa chave. |
 | `ANTHROPIC_API_KEY` | Supabase Vault, local, Vercel, Hermes server | Sim para Hermes | Chave Anthropic validada sem expor valor; usada pelo servico externo. |
 | `ANTHROPIC_MODEL` | Supabase Vault, local, Vercel, Hermes server | Sim para Hermes | Default atual: `claude-sonnet-5`. |
-| `HERMES_API_URL` | Supabase Vault, local, Vercel | Sim para Hermes | URL do servico Hermes. Atual: `http://187.77.35.11`. |
+| `HERMES_API_URL` | Supabase Vault, local, Vercel | Sim para Hermes | URL do servico Hermes. Atual: `https://hermes.187.77.35.11.sslip.io`. |
 | `HERMES_API_TOKEN` | Supabase Vault, local, Vercel, Hermes server | Sim para Hermes | Token service-to-service para Hermes. |
 | `PERPLEXITY_API_KEY` | local, GitHub Actions/Hermes | Futuro | Entra quando `OPE-240` migrar pesquisa do agente. |
 | `HIGGSFIELD_API_KEY` | local, GitHub Actions/Hermes | Futuro | Entra quando `OPE-240` migrar imagens. |

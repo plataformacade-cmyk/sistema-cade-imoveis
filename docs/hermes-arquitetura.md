@@ -13,7 +13,7 @@ no VPS Hostinger, e recebe chamadas service-to-service do app principal.
 - Env path: `/etc/hermes/hermes.env`.
 - Processo: `hermes.service` via systemd.
 - Reverse proxy: Nginx.
-- Healthcheck publico: `GET http://187.77.35.11/healthz`.
+- Healthcheck publico: `GET https://hermes.187.77.35.11.sslip.io/healthz`.
 
 ## Secrets
 
@@ -22,7 +22,7 @@ Valores reais nao devem ser versionados nem escritos em docs.
 - `ANTHROPIC_API_KEY`: chave Anthropic usada apenas pelo Hermes.
 - `ANTHROPIC_MODEL`: modelo padrao. Atual: `claude-sonnet-5`.
 - `HERMES_API_TOKEN`: token Bearer entre app principal e Hermes.
-- `HERMES_API_URL`: URL base consumida pelo app principal.
+- `HERMES_API_URL`: URL base HTTPS consumida pelo app principal.
 
 Copias operacionais ficam no Supabase Vault e no arquivo `/etc/hermes/hermes.env`
 do servidor. O app Next.js deve receber somente `HERMES_API_URL` e
