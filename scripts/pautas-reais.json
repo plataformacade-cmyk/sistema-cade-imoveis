@@ -1,0 +1,62 @@
+[
+  {
+    "id": "real-o-que-observar-durante-a-visita-a-um-imovel",
+    "tema": "O que observar durante a visita a um imovel",
+    "status": "revisao",
+    "origem": [
+      "negociacao"
+    ],
+    "persona": "comprador",
+    "intencao": "avaliar imovel antes de proposta ou aluguel",
+    "score": 8,
+    "sinais": [
+      {
+        "origem": "suporte",
+        "trecho": "Como agendo uma visita?",
+        "criado_em": "2026-06-16T22:17:07.269908+00:00"
+      },
+      {
+        "origem": "suporte",
+        "trecho": "Como agendo uma visita?",
+        "criado_em": "2026-06-16T21:58:06.527447+00:00"
+      },
+      {
+        "origem": "suporte",
+        "trecho": "Como agendo uma visita?",
+        "criado_em": "2026-06-16T21:53:58.384958+00:00"
+      }
+    ],
+    "criado_em": "2026-07-04T15:55:51.247Z",
+    "atualizado_em": "2026-07-04T15:55:51.247Z"
+  },
+  {
+    "id": "real-como-fazer-uma-proposta-de-compra-sem-perder-a-oportunidade",
+    "tema": "Como fazer uma proposta de compra sem perder a oportunidade",
+    "status": "revisao",
+    "origem": [
+      "negociacao"
+    ],
+    "persona": "comprador",
+    "intencao": "negociar valor, condicoes e contraproposta",
+    "score": 6,
+    "sinais": [
+      {
+        "origem": "suporte",
+        "trecho": "E como faço uma proposta?",
+        "criado_em": "2026-06-16T22:17:14.88026+00:00"
+      },
+      {
+        "origem": "suporte",
+        "trecho": "E como faço uma proposta?",
+        "criado_em": "2026-06-16T21:58:14.192619+00:00"
+      },
+      {
+        "origem": "suporte",
+        "trecho": "E como faço uma proposta?",
+        "criado_em": "2026-06-16T21:54:06.030791+00:00"
+      }
+    ],
+    "criado_em": "2026-07-04T15:55:51.247Z",
+    "atualizado_em": "2026-07-04T15:55:51.247Z"
+  }
+]

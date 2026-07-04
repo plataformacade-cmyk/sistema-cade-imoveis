@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "pauta:reais": "node scripts/pauta-reais.mjs gerar",
+    "pauta:listar": "node scripts/pauta-reais.mjs listar",
     "secrets:check": "node scripts/validar-secrets.mjs"
   },
   "dependencies": {

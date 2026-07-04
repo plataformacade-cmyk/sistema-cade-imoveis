@@ -37,3 +37,19 @@ OPENAI_API_KEY=sk-... IDEOGRAM_API_KEY=... node scripts/agente-conteudo.mjs --qu
 ## Mexer na pauta
 
 Edite `scripts/pauta-conteudo.json` e adicione `{ "tema": "...", "publicado": false }`. O agente pega os `publicado:false` mais antigos primeiro e marca como `true` ao publicar.
+
+Tambem existe uma fila revisavel de pautas reais:
+
+```bash
+node scripts/pauta-reais.mjs gerar
+node scripts/pauta-reais.mjs listar
+node scripts/pauta-reais.mjs aprovar --id real-exemplo
+```
+
+O agente ignora itens com `status:"revisao"` ou `status:"descartada"`. Somente pautas aprovadas ou pautas manuais sem status entram na publicacao.
+
+Para validar a fila sem gerar artigo:
+
+```bash
+node scripts/agente-conteudo.mjs --validar-pauta
+```

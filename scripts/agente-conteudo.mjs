@@ -40,6 +40,7 @@ const TEM_HIGGSFIELD = !HIGGSFIELD_API_KEY.startsWith("COLOQUE_");
 
 const idxQuantos = process.argv.indexOf("--quantos");
 const QUANTOS = idxQuantos >= 0 ? Number(process.argv[idxQuantos + 1]) || 3 : 3;
+const VALIDAR_PAUTA = process.argv.includes("--validar-pauta");
 
 const SISTEMA = `Você é redator(a) SEO/GEO da Cadê Imóveis, marketplace imobiliário de Uberlândia/MG.
 Escreva um artigo de blog em PT-BR aplicando técnicas de ranqueamento e de ser citado por IAs:
@@ -133,7 +134,21 @@ function parseJsonConteudo(conteudo) {
   }
 }
 
-async function gerarTexto(tema) {
+function contextoPauta(item) {
+  if (!item || typeof item === "string") return "";
+  const partes = [];
+  if (item.origem) {
+    partes.push(
+      `Origem da pauta: ${Array.isArray(item.origem) ? item.origem.join(", ") : item.origem}.`,
+    );
+  }
+  if (item.persona) partes.push(`Persona: ${item.persona}.`);
+  if (item.intencao) partes.push(`Intencao de busca: ${item.intencao}.`);
+  return partes.join("\n");
+}
+
+async function gerarTexto(item) {
+  const tema = typeof item === "string" ? item : item.tema;
   if (!TEM_OPENAI) return artigoDryRun(tema);
 
   let pesquisa = null;
@@ -162,6 +177,7 @@ async function gerarTexto(tema) {
           role: "user",
           content:
             `Tema do artigo: ${tema}` +
+            (contextoPauta(item) ? `\n\nContexto da pauta:\n${contextoPauta(item)}` : "") +
             (pesquisa
               ? `\n\nPesquisa Perplexity para embasar o artigo:\n${pesquisa}`
               : "\n\nSem pesquisa externa nesta execução; use conhecimento geral com cautela."),
@@ -284,9 +300,16 @@ async function main() {
     TEM_HIGGSFIELD ? "Imagem: Higgsfield" : TEM_IDEOGRAM ? "Imagem: Ideogram" : "Imagem: dry-run",
   );
 
-  const pautaPath = join(__dirname, "pauta-conteudo.json");
+  const pautaPath = process.env.PAUTA_CONTEUDO_PATH || join(__dirname, "pauta-conteudo.json");
   const pauta = JSON.parse(readFileSync(pautaPath, "utf8"));
-  const pendentes = pauta.filter((p) => !p.publicado).slice(0, QUANTOS);
+  const pendentes = pauta
+    .filter((p) => !p.publicado && p.status !== "revisao" && p.status !== "descartada")
+    .slice(0, QUANTOS);
+
+  if (VALIDAR_PAUTA) {
+    console.log(`Pauta publicavel validada: ${pendentes.length} item(ns).`);
+    return;
+  }
 
   if (!pendentes.length) {
     console.log("Pauta vazia. Adicione temas em scripts/pauta-conteudo.json.");
@@ -298,7 +321,7 @@ async function main() {
   );
 
   for (const item of pendentes) {
-    const artigo = await gerarTexto(item.tema);
+    const artigo = await gerarTexto(item);
     let slug = slugify(artigo.titulo);
     while (existentes.has(slug)) slug = `${slug}-${hojeISO().slice(5)}`;
     existentes.add(slug);
