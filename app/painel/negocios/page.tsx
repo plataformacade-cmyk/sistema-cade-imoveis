@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { formatBRL, rotuloStatus, variantStatus, enderecoResumido } from "./_lib";
 import { AbrirNegocioDialog } from "./_components/abrir-negocio-dialog";
 import { FollowupsExternosFila } from "./_components/followups-externos-fila";
+import { rotuloTipoNegocio, sufixoValorAnuncio } from "@/lib/negocios/tipo";
 
 type ImovelEmbed = {
   logradouro: string | null;
@@ -18,6 +19,7 @@ type ImovelEmbed = {
 
 type NegocioLinha = {
   id: string;
+  tipo: string | null;
   status: string;
   valor_acordado: number | null;
   criado_em: string | null;
@@ -48,7 +50,7 @@ export default async function NegociosPage() {
     supabase
       .from("negocios")
       .select(
-        "id, status, valor_acordado, criado_em, imoveis(logradouro, numero, bairro, cidade, fotos)",
+        "id, tipo, status, valor_acordado, criado_em, imoveis(logradouro, numero, bairro, cidade, fotos)",
       )
       .order("criado_em", { ascending: false }),
     podeAbrir
@@ -137,6 +139,12 @@ export default async function NegociosPage() {
                   >
                     {rotuloStatus(n.status)}
                   </Badge>
+                  <Badge
+                    variant="secondary"
+                    className="absolute right-3 top-3 shadow-sm"
+                  >
+                    {rotuloTipoNegocio(n.tipo)}
+                  </Badge>
                 </div>
                 <div className="flex flex-1 flex-col gap-2 p-4">
                   <p className="flex items-start gap-1.5 text-sm font-medium">
@@ -148,6 +156,7 @@ export default async function NegociosPage() {
                       Valor acordado:{" "}
                       <span className="font-semibold text-foreground">
                         {formatBRL(n.valor_acordado)}
+                        {sufixoValorAnuncio(n.tipo)}
                       </span>
                     </p>
                   )}

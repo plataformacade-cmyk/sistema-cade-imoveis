@@ -19,6 +19,10 @@ import {
 import { formatBRL, type StatusVariant } from "../_lib";
 import { EnviarPropostaForm } from "./enviar-proposta-form";
 import { ResponderPropostaForm } from "./responder-proposta-form";
+import {
+  normalizarTipoNegocio,
+  rotuloGarantiaLocacao,
+} from "@/lib/negocios/tipo";
 
 type PropostaLinha = {
   id: string;
@@ -27,6 +31,12 @@ type PropostaLinha = {
   status: string;
   criado_em: string | null;
   autor_id: string;
+  tipo_negocio: string | null;
+  tipo_garantia: string | null;
+  prazo_meses: number | null;
+  reajuste_indice: string | null;
+  dia_vencimento: number | null;
+  encargos: string | null;
   usuarios: { nome: string | null; email: string | null } | null;
 };
 
@@ -78,14 +88,18 @@ export async function PropostasSection({ negocioId }: { negocioId: string }) {
   const sessao = await getSessao();
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("propostas")
-    .select(
-      "id, valor, condicoes, status, criado_em, autor_id, usuarios(nome, email)",
-    )
-    .eq("negocio_id", negocioId)
-    .order("criado_em", { ascending: false });
+  const [{ data: negocio }, { data, error }] = await Promise.all([
+    supabase.from("negocios").select("tipo").eq("id", negocioId).maybeSingle(),
+    supabase
+      .from("propostas")
+      .select(
+        "id, valor, condicoes, status, criado_em, autor_id, tipo_negocio, tipo_garantia, prazo_meses, reajuste_indice, dia_vencimento, encargos, usuarios(nome, email)",
+      )
+      .eq("negocio_id", negocioId)
+      .order("criado_em", { ascending: false }),
+  ]);
 
+  const tipoNegocio = normalizarTipoNegocio(String(negocio?.tipo ?? "venda"));
   const propostas = (data ?? []) as unknown as PropostaLinha[];
 
   return (
@@ -112,7 +126,7 @@ export async function PropostasSection({ negocioId }: { negocioId: string }) {
                 <TableRow>
                   <TableHead>Autor</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
-                  <TableHead>Condições</TableHead>
+                  <TableHead>Detalhes</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Quando</TableHead>
                   <TableHead className="w-px text-right">Ações</TableHead>
@@ -131,9 +145,29 @@ export async function PropostasSection({ negocioId }: { negocioId: string }) {
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {formatBRL(p.valor)}
+                        {normalizarTipoNegocio(p.tipo_negocio ?? tipoNegocio) ===
+                        "locacao"
+                          ? "/mes"
+                          : ""}
                       </TableCell>
                       <TableCell className="max-w-xs whitespace-normal text-muted-foreground">
-                        {p.condicoes || "—"}
+                        <div className="flex flex-col gap-1">
+                          {normalizarTipoNegocio(
+                            p.tipo_negocio ?? tipoNegocio,
+                          ) === "locacao" && (
+                            <span>
+                              {rotuloGarantiaLocacao(p.tipo_garantia)}
+                              {p.prazo_meses
+                                ? ` - ${p.prazo_meses} meses`
+                                : ""}
+                              {p.dia_vencimento
+                                ? ` - vence dia ${p.dia_vencimento}`
+                                : ""}
+                            </span>
+                          )}
+                          <span>{p.condicoes || "—"}</span>
+                          {p.encargos && <span>Encargos: {p.encargos}</span>}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant={variantProposta(p.status)}>
@@ -165,11 +199,19 @@ export async function PropostasSection({ negocioId }: { negocioId: string }) {
         <div className="grid gap-6 border-t pt-4 lg:grid-cols-2">
           <div className="flex flex-col gap-3">
             <p className="text-sm font-medium">Enviar proposta</p>
-            <EnviarPropostaForm negocioId={negocioId} modo="proposta" />
+            <EnviarPropostaForm
+              negocioId={negocioId}
+              modo="proposta"
+              tipoNegocio={tipoNegocio}
+            />
           </div>
           <div className="flex flex-col gap-3">
             <p className="text-sm font-medium">Fazer contraproposta</p>
-            <EnviarPropostaForm negocioId={negocioId} modo="contraproposta" />
+            <EnviarPropostaForm
+              negocioId={negocioId}
+              modo="contraproposta"
+              tipoNegocio={tipoNegocio}
+            />
           </div>
         </div>
       </CardContent>

@@ -6,6 +6,7 @@ import type { Sessao } from "@/lib/auth";
 export type ImovelPublico = {
   id: string;
   tipo: string | null;
+  tipo_negocio: string | null;
   bairro: string | null;
   cidade: string | null;
   uf?: string | null;
@@ -30,10 +31,10 @@ export type ImovelDetalhePrivado = ImovelPublico & {
 };
 
 const COLUNAS_CARD =
-  "id, tipo, bairro, cidade, quartos, vagas, area_m2, valor_anuncio, fotos";
+  "id, tipo, tipo_negocio, bairro, cidade, quartos, vagas, area_m2, valor_anuncio, fotos";
 
 const COLUNAS_DETALHE =
-  "id, proprietario_id, logradouro, numero, complemento, cep, bairro, cidade, uf, tipo, area_m2, quartos, vagas, ano_construcao, caracteristicas, valor_anuncio, fotos, status";
+  "id, proprietario_id, logradouro, numero, complemento, cep, bairro, cidade, uf, tipo, tipo_negocio, area_m2, quartos, vagas, ano_construcao, caracteristicas, valor_anuncio, fotos, status";
 
 function textoFiltro(valor: string | undefined) {
   const limpo = valor
@@ -104,6 +105,7 @@ export async function usuarioPodeVerEnderecoImovel(
 export async function buscarImoveisPublicos(params: {
   q?: string;
   tipo?: string;
+  tipoNegocio?: string;
   bairro?: string;
   quartosMin?: number;
   valorMin?: number;
@@ -122,9 +124,12 @@ export async function buscarImoveisPublicos(params: {
 
   if (q) {
     const termo = `%${q}%`;
-    query = query.or(`bairro.ilike.${termo},cidade.ilike.${termo},tipo.ilike.${termo}`);
+    query = query.or(
+      `bairro.ilike.${termo},cidade.ilike.${termo},tipo.ilike.${termo},tipo_negocio.ilike.${termo}`,
+    );
   }
   if (params.tipo) query = query.eq("tipo", params.tipo);
+  if (params.tipoNegocio) query = query.eq("tipo_negocio", params.tipoNegocio);
   if (bairro) query = query.ilike("bairro", `%${bairro}%`);
   if (params.quartosMin != null) query = query.gte("quartos", params.quartosMin);
   if (params.valorMin != null) query = query.gte("valor_anuncio", params.valorMin);

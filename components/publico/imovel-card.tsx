@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { ArrowRight, Bath, BedDouble, Car, MapPin, Ruler } from "lucide-react";
+import {
+  rotuloTipoNegocio,
+  sufixoValorAnuncio,
+} from "@/lib/negocios/tipo";
 
 export type ImovelCardData = {
   id: string;
   tipo: string | null;
+  tipo_negocio?: string | null;
   bairro: string | null;
   cidade: string | null;
   quartos: number | null;
@@ -60,6 +65,9 @@ export function ImovelCard({ imovel }: { imovel: ImovelCardData }) {
         <span className="absolute left-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-xs font-semibold shadow-sm backdrop-blur">
           {tipo}
         </span>
+        <span className="absolute right-3 top-3 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground shadow-sm">
+          {rotuloTipoNegocio(imovel.tipo_negocio)}
+        </span>
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-4">
@@ -101,7 +109,7 @@ export function ImovelCard({ imovel }: { imovel: ImovelCardData }) {
         <div className="mt-auto pt-2">
           <span className="text-lg font-bold tracking-tight">
             {imovel.valor_anuncio != null
-              ? BRL.format(imovel.valor_anuncio)
+              ? `${BRL.format(imovel.valor_anuncio)}${sufixoValorAnuncio(imovel.tipo_negocio)}`
               : "Sob consulta"}
           </span>
         </div>

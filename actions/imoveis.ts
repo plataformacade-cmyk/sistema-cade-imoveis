@@ -5,6 +5,7 @@ import { getSessao } from "@/lib/auth";
 import { criarDestinoAceiteTermos } from "@/lib/auth-redirect";
 import { registrarEvento } from "@/lib/log";
 import { PACOTE_NAO_CONTRATAR } from "@/lib/servicos-juridicos";
+import { isTipoNegocio, TIPO_NEGOCIO_PADRAO } from "@/lib/negocios/tipo";
 import {
   cancelarContratacaoServicoJuridicoImovel,
   registrarContratacaoServicoJuridico,
@@ -67,12 +68,16 @@ function montarPayload(formData: FormData):
   | { dados: Record<string, unknown> } {
   const tipo = txt(formData.get("tipo")) as Tipo | null;
   const status = (txt(formData.get("status")) ?? "rascunho") as Status;
+  const tipo_negocio =
+    txt(formData.get("tipo_negocio")) ?? TIPO_NEGOCIO_PADRAO;
   const cep = txt(formData.get("cep"));
   const valor_anuncio = num(formData.get("valor_anuncio"));
   const uf = txt(formData.get("uf"));
 
   if (!tipo || !TIPOS.includes(tipo))
     return { erro: "Selecione um tipo de imovel valido." };
+  if (!isTipoNegocio(tipo_negocio))
+    return { erro: "Selecione se o anuncio e venda ou locacao." };
   if (!STATUSES.includes(status)) return { erro: "Status invalido." };
   if (!cep) return { erro: "Informe o CEP." };
   if (valor_anuncio === null || valor_anuncio <= 0)
@@ -89,6 +94,7 @@ function montarPayload(formData: FormData):
       cidade: txt(formData.get("cidade")),
       uf: uf ? uf.toUpperCase() : null,
       tipo,
+      tipo_negocio,
       area_m2: num(formData.get("area_m2")),
       quartos: int(formData.get("quartos")),
       vagas: int(formData.get("vagas")),
@@ -173,7 +179,11 @@ export async function criarImovel(
 
   await registrarEvento("imovel_cadastrado", {
     entidadeId: data.id,
-    payload: { tipo: r.dados.tipo, status: r.dados.status },
+    payload: {
+      tipo: r.dados.tipo,
+      tipo_negocio: r.dados.tipo_negocio,
+      status: r.dados.status,
+    },
   });
 
   const servico = await sincronizarServicoJuridicoImovel({
@@ -222,7 +232,11 @@ export async function editarImovel(
 
   await registrarEvento("imovel_editado", {
     entidadeId: id,
-    payload: { tipo: r.dados.tipo, status: r.dados.status },
+    payload: {
+      tipo: r.dados.tipo,
+      tipo_negocio: r.dados.tipo_negocio,
+      status: r.dados.status,
+    },
   });
 
   const servico = await sincronizarServicoJuridicoImovel({

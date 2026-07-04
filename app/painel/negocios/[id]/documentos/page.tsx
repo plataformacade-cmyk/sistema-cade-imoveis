@@ -335,6 +335,11 @@ export default async function DocumentosPage({
     servicos[0] ??
     null;
   const ehLocacao = tipoNegocio === "locacao";
+  const perfilLabel = {
+    ...PERFIL_CHECKLIST_LABEL,
+    comprador: ehLocacao ? "Locatario" : PERFIL_CHECKLIST_LABEL.comprador,
+    vendedor: ehLocacao ? "Locador" : PERFIL_CHECKLIST_LABEL.vendedor,
+  };
 
   const papeisUsuarioAtivos = (negocio.papeis_negocio ?? []).filter(
     (p) => p.ativo && p.usuario_id === sessao?.user.id,
@@ -360,6 +365,7 @@ export default async function DocumentosPage({
   const contatoExterno = await carregarEstadoContatoExterno({
     negocioId: negocio.id,
     statusNegocio: negocio.status,
+    tipoNegocio,
     sessao,
     servicoAtivo: Boolean(servico),
   });
@@ -407,8 +413,9 @@ export default async function DocumentosPage({
             {enderecoResumido(negocio.imoveis)}
           </CardTitle>
           <CardDescription>
-            {ehLocacao ? "Locacao" : "Venda"} - checklist por comprador,
-            vendedor, imovel e contrato.
+            {ehLocacao ? "Locacao" : "Venda"} - checklist por{" "}
+            {ehLocacao ? "locatario, locador" : "comprador, vendedor"}, imovel
+            e contrato.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -452,7 +459,7 @@ export default async function DocumentosPage({
               <section key={perfil} className="flex flex-col gap-4">
                 <div>
                   <h2 className="text-base font-semibold">
-                    {PERFIL_CHECKLIST_LABEL[perfil]}
+                    {perfilLabel[perfil]}
                   </h2>
                   <p className="text-muted-foreground text-sm">
                     {itens.length} item(ns) para este perfil.

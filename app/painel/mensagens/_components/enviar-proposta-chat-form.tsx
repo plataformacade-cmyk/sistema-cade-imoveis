@@ -10,17 +10,32 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  GARANTIA_LOCACAO_OPCOES,
+  normalizarTipoNegocio,
+} from "@/lib/negocios/tipo";
 
 export function EnviarPropostaChatForm({
   negocioId,
   conversaId,
   modo = "proposta",
+  tipoNegocio = "venda",
 }: {
   negocioId: string;
   conversaId: string;
   modo?: "proposta" | "contraproposta";
+  tipoNegocio?: string | null;
 }) {
+  const tipoNormalizado = normalizarTipoNegocio(tipoNegocio);
+  const locacao = tipoNormalizado === "locacao";
   const action = modo === "contraproposta" ? contraproposta : enviarProposta;
   const [state, formAction, pending] = useActionState<PropostaState, FormData>(
     action,
@@ -46,7 +61,9 @@ export function EnviarPropostaChatForm({
 
       <div className="grid gap-2 sm:grid-cols-[minmax(0,180px)_1fr_auto] sm:items-end">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`chat-valor-${modo}`}>Valor (R$)</Label>
+          <Label htmlFor={`chat-valor-${modo}`}>
+            {locacao ? "Aluguel mensal (R$)" : "Valor (R$)"}
+          </Label>
           <Input
             id={`chat-valor-${modo}`}
             name="valor"
@@ -73,6 +90,67 @@ export function EnviarPropostaChatForm({
           {pending ? "Enviando..." : titulo}
         </Button>
       </div>
+
+      {locacao && (
+        <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`chat-tipo-garantia-${modo}`}>Garantia</Label>
+            <Select name="tipo_garantia" required>
+              <SelectTrigger id={`chat-tipo-garantia-${modo}`}>
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent>
+                {GARANTIA_LOCACAO_OPCOES.map((opcao) => (
+                  <SelectItem key={opcao.value} value={opcao.value}>
+                    {opcao.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`chat-prazo-meses-${modo}`}>Prazo (meses)</Label>
+            <Input
+              id={`chat-prazo-meses-${modo}`}
+              name="prazo_meses"
+              type="number"
+              min="1"
+              step="1"
+              placeholder="30"
+              required
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`chat-reajuste-${modo}`}>Reajuste</Label>
+            <Input
+              id={`chat-reajuste-${modo}`}
+              name="reajuste_indice"
+              placeholder="IPCA"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`chat-vencimento-${modo}`}>Vencimento</Label>
+            <Input
+              id={`chat-vencimento-${modo}`}
+              name="dia_vencimento"
+              type="number"
+              min="1"
+              max="31"
+              step="1"
+              placeholder="10"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5 md:col-span-2 lg:col-span-4">
+            <Label htmlFor={`chat-encargos-${modo}`}>Encargos</Label>
+            <Textarea
+              id={`chat-encargos-${modo}`}
+              name="encargos"
+              placeholder="Condominio, IPTU, seguro incendio e demais encargos..."
+              rows={2}
+            />
+          </div>
+        </div>
+      )}
 
       {(state.error || state.message) && (
         <p

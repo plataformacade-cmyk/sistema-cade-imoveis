@@ -13,6 +13,11 @@ import {
   perfisTermosDosPapeisNegocio,
   usuarioTemTermosPendentes,
 } from "@/lib/termos";
+import {
+  GARANTIA_LOCACAO_OPCOES,
+  normalizarTipoNegocio,
+  rotuloGarantiaLocacao,
+} from "@/lib/negocios/tipo";
 import { revalidatePath } from "next/cache";
 
 export type PropostaState = { error?: string; message?: string };
@@ -22,6 +27,7 @@ type Sessao = NonNullable<Awaited<ReturnType<typeof getSessao>>>;
 type ContextoNegocio = {
   negocioId: string;
   negocioStatus: string;
+  tipoNegocio: "venda" | "locacao";
   papeisUsuario: string[];
 };
 
@@ -32,6 +38,12 @@ type PropostaLinha = {
   valor: number;
   condicoes: string | null;
   status: string;
+  tipo_negocio: string | null;
+  tipo_garantia: string | null;
+  prazo_meses: number | null;
+  reajuste_indice: string | null;
+  dia_vencimento: number | null;
+  encargos: string | null;
 };
 
 type TipoMensagemProposta =
@@ -51,6 +63,34 @@ function parseValor(bruto: string): number | null {
   return n;
 }
 
+function parseInteiroOpcional(bruto: string): number | null {
+  if (!bruto.trim()) return null;
+  const n = Number(bruto);
+  if (!Number.isInteger(n)) return Number.NaN;
+  return n;
+}
+
+function garantiaValida(valor: string) {
+  return GARANTIA_LOCACAO_OPCOES.some((opcao) => opcao.value === valor);
+}
+
+function resumoLocacao(proposta: PropostaLinha) {
+  if (proposta.tipo_negocio !== "locacao") return null;
+  const partes = [
+    proposta.tipo_garantia
+      ? `Garantia: ${rotuloGarantiaLocacao(proposta.tipo_garantia)}`
+      : null,
+    proposta.prazo_meses ? `Prazo: ${proposta.prazo_meses} meses` : null,
+    proposta.reajuste_indice ? `Reajuste: ${proposta.reajuste_indice}` : null,
+    proposta.dia_vencimento
+      ? `Vencimento: dia ${proposta.dia_vencimento}`
+      : null,
+    proposta.encargos ? `Encargos: ${proposta.encargos}` : null,
+  ].filter(Boolean);
+
+  return partes.length > 0 ? partes.join("\n") : null;
+}
+
 async function carregarContextoNegocio(
   negocioId: string,
   sessao: Sessao,
@@ -61,7 +101,7 @@ async function carregarContextoNegocio(
     await Promise.all([
       supabase
         .from("negocios")
-        .select("id, status")
+        .select("id, status, tipo")
         .eq("id", negocioId)
         .maybeSingle(),
       supabase
@@ -80,6 +120,7 @@ async function carregarContextoNegocio(
   return {
     negocioId: String(negocio.id),
     negocioStatus: String(negocio.status),
+    tipoNegocio: normalizarTipoNegocio(String(negocio.tipo ?? "venda")),
     papeisUsuario,
   };
 }
@@ -138,6 +179,12 @@ async function inserirMensagemProposta(params: {
       valor: params.proposta.valor,
       condicoes: params.proposta.condicoes,
       status: params.proposta.status,
+      tipo_negocio: params.proposta.tipo_negocio,
+      tipo_garantia: params.proposta.tipo_garantia,
+      prazo_meses: params.proposta.prazo_meses,
+      reajuste_indice: params.proposta.reajuste_indice,
+      dia_vencimento: params.proposta.dia_vencimento,
+      encargos: params.proposta.encargos,
     },
   });
 
@@ -203,6 +250,16 @@ async function criarProposta(
   const negocioId = String(formData.get("negocio_id") ?? "");
   const valorBruto = String(formData.get("valor") ?? "").trim();
   const condicoes = String(formData.get("condicoes") ?? "").trim();
+  const tipoGarantia = String(formData.get("tipo_garantia") ?? "").trim();
+  const prazoMeses = parseInteiroOpcional(
+    String(formData.get("prazo_meses") ?? "").trim(),
+  );
+  const reajusteIndice =
+    String(formData.get("reajuste_indice") ?? "").trim() || null;
+  const diaVencimento = parseInteiroOpcional(
+    String(formData.get("dia_vencimento") ?? "").trim(),
+  );
+  const encargos = String(formData.get("encargos") ?? "").trim() || null;
 
   if (!negocioId) return { error: "Negocio nao identificado." };
   if (valorBruto === "")
@@ -226,6 +283,18 @@ async function criarProposta(
   if (!contexto) return { error: "Negocio nao encontrado." };
   if (!negocioAbertoParaProposta(contexto))
     return { error: "Nao e possivel propor em negocio encerrado." };
+
+  if (contexto.tipoNegocio === "locacao") {
+    if (!garantiaValida(tipoGarantia))
+      return { error: "Selecione a garantia da locacao." };
+    if (!prazoMeses || Number.isNaN(prazoMeses) || prazoMeses <= 0)
+      return { error: "Informe o prazo da locacao em meses." };
+    if (
+      diaVencimento != null &&
+      (Number.isNaN(diaVencimento) || diaVencimento < 1 || diaVencimento > 31)
+    )
+      return { error: "Informe um dia de vencimento entre 1 e 31." };
+  }
 
   const perfisTermos = perfisTermosDosPapeisNegocio(
     contexto.papeisUsuario,
@@ -269,8 +338,19 @@ async function criarProposta(
       valor,
       condicoes: condicoes || null,
       status,
+      tipo_negocio: contexto.tipoNegocio,
+      tipo_garantia:
+        contexto.tipoNegocio === "locacao" ? tipoGarantia : null,
+      prazo_meses: contexto.tipoNegocio === "locacao" ? prazoMeses : null,
+      reajuste_indice:
+        contexto.tipoNegocio === "locacao" ? reajusteIndice : null,
+      dia_vencimento:
+        contexto.tipoNegocio === "locacao" ? diaVencimento : null,
+      encargos: contexto.tipoNegocio === "locacao" ? encargos : null,
     })
-    .select("id, negocio_id, autor_id, valor, condicoes, status")
+    .select(
+      "id, negocio_id, autor_id, valor, condicoes, status, tipo_negocio, tipo_garantia, prazo_meses, reajuste_indice, dia_vencimento, encargos",
+    )
     .single();
 
   if (error || !data)
@@ -326,6 +406,15 @@ async function criarProposta(
       conversa_id: conversaId,
       valor,
       condicoes: condicoes || null,
+      tipo_negocio: contexto.tipoNegocio,
+      tipo_garantia:
+        contexto.tipoNegocio === "locacao" ? tipoGarantia : null,
+      prazo_meses: contexto.tipoNegocio === "locacao" ? prazoMeses : null,
+      reajuste_indice:
+        contexto.tipoNegocio === "locacao" ? reajusteIndice : null,
+      dia_vencimento:
+        contexto.tipoNegocio === "locacao" ? diaVencimento : null,
+      encargos: contexto.tipoNegocio === "locacao" ? encargos : null,
       contraproposta: status === "contraproposta",
     },
   });
@@ -379,7 +468,9 @@ export async function responderProposta(
   const supabase = await createClient();
   const { data: propostaAtual, error: propostaErro } = await supabase
     .from("propostas")
-    .select("id, negocio_id, autor_id, valor, condicoes, status")
+    .select(
+      "id, negocio_id, autor_id, valor, condicoes, status, tipo_negocio, tipo_garantia, prazo_meses, reajuste_indice, dia_vencimento, encargos",
+    )
     .eq("id", propostaId)
     .maybeSingle();
 
@@ -413,7 +504,9 @@ export async function responderProposta(
     .from("propostas")
     .update({ status: acao })
     .eq("id", propostaId)
-    .select("id, negocio_id, autor_id, valor, condicoes, status")
+    .select(
+      "id, negocio_id, autor_id, valor, condicoes, status, tipo_negocio, tipo_garantia, prazo_meses, reajuste_indice, dia_vencimento, encargos",
+    )
     .single();
 
   if (error || !data)
@@ -443,6 +536,23 @@ export async function responderProposta(
     };
 
   if (aceita) {
+    const dadosAceitos =
+      propostaAtualizada.tipo_negocio === "locacao"
+        ? {
+            valor_acordado: propostaAtualizada.valor,
+            tipo_garantia: propostaAtualizada.tipo_garantia,
+            prazo_meses: propostaAtualizada.prazo_meses,
+            reajuste_indice: propostaAtualizada.reajuste_indice,
+            dia_vencimento: propostaAtualizada.dia_vencimento,
+            encargos: propostaAtualizada.encargos,
+          }
+        : { valor_acordado: propostaAtualizada.valor };
+
+    await supabase
+      .from("negocios")
+      .update(dadosAceitos)
+      .eq("id", propostaAtualizada.negocio_id);
+
     await atualizarStatusNegocio({
       negocioId: propostaAtualizada.negocio_id,
       statusAtual: contexto.negocioStatus,
@@ -459,6 +569,8 @@ export async function responderProposta(
       status: acao,
       negocio_id: propostaAtualizada.negocio_id,
       conversa_id: conversaId,
+      tipo_negocio: propostaAtualizada.tipo_negocio,
+      resumo_locacao: resumoLocacao(propostaAtualizada),
     },
   });
 

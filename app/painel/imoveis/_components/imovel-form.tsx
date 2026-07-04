@@ -37,6 +37,12 @@ import {
   type PacoteServicoJuridicoForm,
   type TipoNegocioServicoJuridico,
 } from "@/lib/servicos-juridicos";
+import {
+  TIPO_NEGOCIO_OPCOES,
+  TIPO_NEGOCIO_PADRAO,
+  rotuloValorAnuncio,
+  type TipoNegocio,
+} from "@/lib/negocios/tipo";
 
 export type ImovelEditavel = {
   id: string;
@@ -48,6 +54,7 @@ export type ImovelEditavel = {
   cidade: string | null;
   uf: string | null;
   tipo: string | null;
+  tipo_negocio: TipoNegocio | null;
   area_m2: number | null;
   quartos: number | null;
   vagas: number | null;
@@ -100,6 +107,9 @@ export function ImovelForm({
   const [cidade, setCidade] = useState(imovel?.cidade ?? "");
   const [uf, setUf] = useState(imovel?.uf ?? "");
   const [tipo, setTipo] = useState(imovel?.tipo ?? "");
+  const [tipoNegocio, setTipoNegocio] = useState<TipoNegocio>(
+    imovel?.tipo_negocio ?? TIPO_NEGOCIO_PADRAO,
+  );
   const [status, setStatus] = useState(imovel?.status ?? "rascunho");
   const [servicoPacote, setServicoPacote] =
     useState<PacoteServicoJuridicoForm>(
@@ -107,7 +117,9 @@ export function ImovelForm({
     );
   const [servicoTipo, setServicoTipo] =
     useState<TipoNegocioServicoJuridico>(
-      imovel?.servico_juridico_tipo_negocio ?? "venda",
+      imovel?.servico_juridico_tipo_negocio ??
+        imovel?.tipo_negocio ??
+        TIPO_NEGOCIO_PADRAO,
     );
   const [buscandoCep, setBuscandoCep] = useState(false);
 
@@ -204,6 +216,12 @@ export function ImovelForm({
     setServicoPacote(pacote);
     const tipoPadrao = PACOTE_SERVICO_JURIDICO_INFO[pacote]?.tipoPadrao;
     if (tipoPadrao) setServicoTipo(tipoPadrao);
+  }
+
+  function selecionarTipoNegocio(valor: string) {
+    const proximo = valor === "locacao" ? "locacao" : "venda";
+    setTipoNegocio(proximo);
+    if (servicoPacote === PACOTE_NAO_CONTRATAR) setServicoTipo(proximo);
   }
 
   return (
@@ -389,13 +407,35 @@ export function ImovelForm({
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
-                <Label htmlFor="valor_anuncio">Valor do anúncio (R$)</Label>
+                <Label htmlFor="tipo-negocio-trigger">Operacao</Label>
+                <Select
+                  name="tipo_negocio"
+                  items={TIPO_NEGOCIO_OPCOES}
+                  value={tipoNegocio}
+                  onValueChange={(v) => selecionarTipoNegocio(String(v ?? ""))}
+                >
+                  <SelectTrigger id="tipo-negocio-trigger" className="w-full">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIPO_NEGOCIO_OPCOES.map((opcao) => (
+                      <SelectItem key={opcao.value} value={opcao.value}>
+                        {opcao.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="valor_anuncio">
+                  {rotuloValorAnuncio(tipoNegocio)} (R$)
+                </Label>
                 <Input
                   id="valor_anuncio"
                   name="valor_anuncio"
                   inputMode="decimal"
                   defaultValue={imovel?.valor_anuncio ?? ""}
-                  placeholder="450000"
+                  placeholder={tipoNegocio === "locacao" ? "2500" : "450000"}
                   required
                 />
               </div>

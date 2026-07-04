@@ -39,6 +39,7 @@ export type AceiteContatoExterno = {
 export type EstadoContatoExterno = {
   mostrar: boolean;
   negocioId: string;
+  tipoNegocio: "venda" | "locacao";
   status: StatusContatoExterno;
   liberadoEm: string | null;
   recusadoEm: string | null;

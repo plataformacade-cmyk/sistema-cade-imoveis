@@ -6,6 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { buscarMetricasEngajamentoImoveis } from "@/lib/engajamento/imoveis";
 import { EngajamentoResumoTabela } from "./_components/engajamento-imovel";
 import {
+  rotuloTipoNegocio,
+  rotuloValorAnuncio,
+  sufixoValorAnuncio,
+} from "@/lib/negocios/tipo";
+import {
   Table,
   TableBody,
   TableCell,
@@ -23,6 +28,7 @@ type Imovel = {
   cidade: string | null;
   uf: string | null;
   tipo: string | null;
+  tipo_negocio: string | null;
   valor_anuncio: number | null;
   status: string;
 };
@@ -71,7 +77,7 @@ export default async function ImoveisPage() {
   const { data } = await supabase
     .from("imoveis")
     .select(
-      "id, logradouro, numero, bairro, cidade, uf, tipo, valor_anuncio, status",
+      "id, logradouro, numero, bairro, cidade, uf, tipo, tipo_negocio, valor_anuncio, status",
     )
     .order("criado_em", { ascending: false });
 
@@ -116,6 +122,7 @@ export default async function ImoveisPage() {
               <TableRow>
                 <TableHead>Endereço</TableHead>
                 <TableHead>Tipo</TableHead>
+                <TableHead>Operacao</TableHead>
                 <TableHead>Valor</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Engajamento</TableHead>
@@ -144,10 +151,18 @@ export default async function ImoveisPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">
+                        {rotuloTipoNegocio(i.tipo_negocio)}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="tabular-nums">
                       {i.valor_anuncio != null
-                        ? moeda.format(i.valor_anuncio)
+                        ? `${moeda.format(i.valor_anuncio)}${sufixoValorAnuncio(i.tipo_negocio)}`
                         : "—"}
+                      <div className="text-muted-foreground text-xs">
+                        {rotuloValorAnuncio(i.tipo_negocio)}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant={STATUS_VARIANT[i.status] ?? "outline"}>

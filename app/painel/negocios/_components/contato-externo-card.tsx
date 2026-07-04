@@ -42,6 +42,13 @@ const papelLabel: Record<PapelContatoExterno, string> = {
   proprietario: "Proprietario",
 };
 
+function papelLabelPorTipo(papel: PapelContatoExterno, tipo: string) {
+  if (tipo === "locacao") {
+    return papel === "comprador" ? "Locatario" : "Locador";
+  }
+  return papelLabel[papel];
+}
+
 function linhaAceite(label: string, ok: boolean) {
   return (
     <div className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
@@ -73,6 +80,14 @@ export function ContatoExternoCard({ estado }: Props) {
     if (recusarState.message) toast.success(recusarState.message);
   }, [recusarState]);
 
+  const termoExibido =
+    estado.tipoNegocio === "locacao"
+      ? TERMO_CONTATO_EXTERNO.replace(
+          "comprador e proprietario",
+          "locatario e locador",
+        )
+      : TERMO_CONTATO_EXTERNO;
+
   return (
     <Card>
       <CardHeader>
@@ -88,12 +103,18 @@ export function ContatoExternoCard({ estado }: Props) {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className="text-muted-foreground text-sm">
-          {TERMO_CONTATO_EXTERNO}
+          {termoExibido}
         </p>
 
         <div className="grid gap-2 sm:grid-cols-2">
-          {linhaAceite("Comprador", estado.temCompradorAceito)}
-          {linhaAceite("Proprietario", estado.temProprietarioAceito)}
+          {linhaAceite(
+            papelLabelPorTipo("comprador", estado.tipoNegocio),
+            estado.temCompradorAceito,
+          )}
+          {linhaAceite(
+            papelLabelPorTipo("proprietario", estado.tipoNegocio),
+            estado.temProprietarioAceito,
+          )}
         </div>
 
         {estado.status === "liberado" && (
@@ -114,7 +135,7 @@ export function ContatoExternoCard({ estado }: Props) {
                       {contato.nome || contato.email || "Participante"}
                     </p>
                     <p className="text-muted-foreground">
-                      {papelLabel[contato.papel]}
+                      {papelLabelPorTipo(contato.papel, estado.tipoNegocio)}
                     </p>
                     {contato.email && <p className="mt-2">{contato.email}</p>}
                     {contato.telefone && <p>{contato.telefone}</p>}

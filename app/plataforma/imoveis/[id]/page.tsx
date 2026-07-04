@@ -25,6 +25,10 @@ import {
   enderecoPublico,
   usuarioPodeVerEnderecoImovel,
 } from "@/lib/imoveis/privacidade-endereco";
+import {
+  rotuloTipoNegocio,
+  sufixoValorAnuncio,
+} from "@/lib/negocios/tipo";
 
 const TIPO_LABEL: Record<string, string> = {
   casa: "Casa",
@@ -77,6 +81,9 @@ export default async function ImovelDetalhePage({
   const podeVerEndereco = await usuarioPodeVerEnderecoImovel(imovel, sessao);
   const fotos = imovel.fotos ?? [];
   const tipoLabel = TIPO_LABEL[imovel.tipo ?? ""] ?? imovel.tipo ?? "Imovel";
+  const tipoNegocio = imovel.tipo_negocio ?? undefined;
+  const tipoNegocioLabel = rotuloTipoNegocio(imovel.tipo_negocio);
+  const sufixoValor = sufixoValorAnuncio(imovel.tipo_negocio);
   const titulo = `${tipoLabel}${imovel.bairro ? ` em ${imovel.bairro}` : ""}`;
   const cidadeUf =
     imovel.cidade && imovel.uf
@@ -104,8 +111,8 @@ export default async function ImovelDetalhePage({
     if (!valor || relacionados.length >= 4) return;
     const lista = await buscarImoveisPublicos(
       coluna === "bairro"
-        ? { bairro: valor, limit: 8 }
-        : { tipo: valor, limit: 8 },
+        ? { bairro: valor, tipoNegocio, limit: 8 }
+        : { tipo: valor, tipoNegocio, limit: 8 },
     );
     for (const r of lista as ImovelCardData[]) {
       if (relacionados.length >= 4 || vistos.has(r.id)) continue;
@@ -120,7 +127,7 @@ export default async function ImovelDetalhePage({
   const jsonld = [
     imovelLd({
       titulo,
-      descricao: `${tipoLabel} em ${imovel.bairro ?? "Uberlandia"} com ${imovel.area_m2 ?? "-"} m2. Negocie direto pela Cade Imoveis.`,
+      descricao: `${tipoLabel} para ${tipoNegocioLabel.toLowerCase()} em ${imovel.bairro ?? "Uberlandia"} com ${imovel.area_m2 ?? "-"} m2. Negocie direto pela Cade Imoveis.`,
       url: urlImovel,
       fotos: fotos.slice(0, 6),
       preco: imovel.valor_anuncio,
@@ -244,7 +251,7 @@ export default async function ImovelDetalhePage({
         <div className="flex flex-col gap-8">
           <header className="flex flex-col gap-3 border-b pb-6">
             <span className="w-fit rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-              {tipoLabel}
+              {tipoLabel} para {tipoNegocioLabel.toLowerCase()}
             </span>
             <h1 className="text-3xl font-semibold tracking-tight">{titulo}</h1>
             {localizacaoHeader && (
@@ -291,7 +298,7 @@ export default async function ImovelDetalhePage({
                 ? ` e ${imovel.vagas} ${imovel.vagas === 1 ? "vaga" : "vagas"} de garagem`
                 : ""}
               . Demonstre interesse para conversar diretamente com o anunciante e
-              receber mais detalhes.
+              receber mais detalhes sobre a {tipoNegocioLabel.toLowerCase()}.
             </p>
           </section>
 
@@ -367,10 +374,12 @@ export default async function ImovelDetalhePage({
         <aside className="lg:sticky lg:top-24 lg:h-fit">
           <div className="flex flex-col gap-4 rounded-2xl border bg-card p-6 shadow-sm">
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Valor</p>
+              <p className="text-xs font-medium text-muted-foreground">
+                {imovel.tipo_negocio === "locacao" ? "Aluguel mensal" : "Valor"}
+              </p>
               <p className="text-3xl font-semibold tracking-tight">
                 {imovel.valor_anuncio != null
-                  ? moeda.format(imovel.valor_anuncio)
+                  ? `${moeda.format(imovel.valor_anuncio)}${sufixoValor}`
                   : "Sob consulta"}
               </p>
             </div>

@@ -41,9 +41,25 @@ export async function abrirNegocio(
   }
 
   const supabase = await createClient();
+  const { data: imovel, error: imovelErro } = await supabase
+    .from("imoveis")
+    .select("tipo_negocio")
+    .eq("id", imovel_id)
+    .maybeSingle();
+
+  if (imovelErro || !imovel)
+    return { error: "Imovel nao encontrado." };
+
+  const tipo = imovel.tipo_negocio === "locacao" ? "locacao" : "venda";
   const { data, error } = await supabase
     .from("negocios")
-    .insert({ imovel_id, status, valor_acordado, criado_por: sessao.user.id })
+    .insert({
+      imovel_id,
+      tipo,
+      status,
+      valor_acordado,
+      criado_por: sessao.user.id,
+    })
     .select("id")
     .single();
 
@@ -52,7 +68,7 @@ export async function abrirNegocio(
 
   await registrarEvento("negocio_aberto", {
     entidadeId: data.id,
-    payload: { imovel_id, status, valor_acordado },
+    payload: { imovel_id, tipo, status, valor_acordado },
   });
 
   revalidatePath("/painel/negocios");

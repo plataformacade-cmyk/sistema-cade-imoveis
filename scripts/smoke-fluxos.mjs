@@ -110,13 +110,80 @@ await admin.from("papeis_negocio").insert({
 
 const { data: negCriado } = await admin
   .from("negocios")
-  .select("status")
+  .select("status, tipo")
   .eq("id", negId)
   .single();
 check(
   "RPC interesse cria negocio em qualificacao",
-  negCriado?.status === "qualificacao",
-  `status=${negCriado?.status}`,
+  negCriado?.status === "qualificacao" && negCriado?.tipo === "venda",
+  `status=${negCriado?.status}; tipo=${negCriado?.tipo}`,
+);
+
+const { data: imovelLocacao, error: eImovelLocacao } = await admin
+  .from("imoveis")
+  .insert({
+    proprietario_id: propId,
+    tipo: "apartamento",
+    tipo_negocio: "locacao",
+    cidade: "Uberlandia",
+    bairro: "Santa Monica",
+    valor_anuncio: 2800,
+    status: "ativo",
+  })
+  .select("id, tipo_negocio")
+  .single();
+check(
+  "imovel de locacao criado",
+  !eImovelLocacao && imovelLocacao?.tipo_negocio === "locacao",
+  eImovelLocacao?.message ?? JSON.stringify(imovelLocacao),
+);
+
+const { data: negLocacaoId, error: eIntLocacao } = await comp.rpc(
+  "demonstrar_interesse",
+  {
+    p_imovel_id: imovelLocacao?.id,
+  },
+);
+check("RPC interesse em locacao", !eIntLocacao && negLocacaoId, eIntLocacao?.message);
+
+const { data: negLocacao } = await admin
+  .from("negocios")
+  .select("status, tipo")
+  .eq("id", negLocacaoId)
+  .single();
+check(
+  "RPC locacao cria negocio tipo locacao",
+  negLocacao?.status === "qualificacao" && negLocacao?.tipo === "locacao",
+  `status=${negLocacao?.status}; tipo=${negLocacao?.tipo}`,
+);
+
+const { data: propostaLocacao, error: ePropostaLocacao } = await comp
+  .from("propostas")
+  .insert({
+    negocio_id: negLocacaoId,
+    autor_id: compId,
+    valor: 2700,
+    condicoes: "Proposta de locacao smoke.",
+    status: "enviada",
+    tipo_negocio: "locacao",
+    tipo_garantia: "caucao",
+    prazo_meses: 30,
+    reajuste_indice: "IPCA",
+    dia_vencimento: 10,
+    encargos: "Condominio e IPTU por conta do locatario.",
+  })
+  .select(
+    "id, tipo_negocio, tipo_garantia, prazo_meses, reajuste_indice, dia_vencimento, encargos",
+  )
+  .single();
+check(
+  "proposta de locacao persiste campos especificos",
+  !ePropostaLocacao &&
+    propostaLocacao?.tipo_negocio === "locacao" &&
+    propostaLocacao?.tipo_garantia === "caucao" &&
+    propostaLocacao?.prazo_meses === 30 &&
+    propostaLocacao?.dia_vencimento === 10,
+  ePropostaLocacao?.message ?? JSON.stringify(propostaLocacao),
 );
 
 const { data: conv } = await admin

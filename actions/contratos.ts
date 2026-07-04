@@ -143,6 +143,33 @@ async function moverNegocioParaContratoSeAplicavel(
   }
 }
 
+async function concluirLocacaoSeContratoValidado(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  negocio: NegocioContrato,
+  contrato: ContratoResumo,
+) {
+  if (negocio.tipo !== "locacao") return;
+  if (STATUS_NAO_REGREDIR.includes(negocio.status)) return;
+
+  const { error } = await supabase
+    .from("negocios")
+    .update({ status: "concluido" })
+    .eq("id", negocio.id)
+    .not("status", "in", "(concluido,perdido,acompanhamento_externo)");
+
+  if (!error) {
+    await registrarEvento("negocio_status_mudado", {
+      entidadeId: negocio.id,
+      payload: {
+        status_anterior: negocio.status,
+        status_novo: "concluido",
+        motivo: "contrato_locacao_validado",
+        contrato_id: contrato.id,
+      },
+    });
+  }
+}
+
 async function dadosAuditoriaAssinatura() {
   const h = await headers();
   const ip =
@@ -444,6 +471,10 @@ export async function revisarContrato(
       status_novo: acao,
     },
   });
+
+  if (acao === "validado") {
+    await concluirLocacaoSeContratoValidado(supabase, negocio, contrato);
+  }
 
   await revalidarContrato(contrato.negocio_id);
   return {

@@ -5,6 +5,7 @@ import { ImovelCard, type ImovelCardData } from "@/components/publico/imovel-car
 import { Reveal } from "@/components/publico/reveal";
 import { Search, SlidersHorizontal, Home } from "lucide-react";
 import { buscarImoveisPublicos } from "@/lib/imoveis/privacidade-endereco";
+import { TIPO_NEGOCIO_OPCOES } from "@/lib/negocios/tipo";
 
 const TIPO_LABEL: Record<string, string> = {
   casa: "Casa",
@@ -31,6 +32,7 @@ function num(v: string | undefined): number | undefined {
 
 type Params = {
   q?: string;
+  tipo_negocio?: string;
   tipo?: string;
   bairro?: string;
   quartos?: string;
@@ -50,6 +52,7 @@ export default async function VitrinePage({
 }) {
   const sp = await searchParams;
   const q = txt(sp.q);
+  const tipoNegocio = txt(sp.tipo_negocio);
   const tipo = txt(sp.tipo);
   const bairro = txt(sp.bairro);
   const quartosMin = num(sp.quartos);
@@ -58,6 +61,10 @@ export default async function VitrinePage({
 
   const imoveis = (await buscarImoveisPublicos({
     q,
+    tipoNegocio:
+      tipoNegocio && ["venda", "locacao"].includes(tipoNegocio)
+        ? tipoNegocio
+        : undefined,
     tipo: tipo && (TIPOS as readonly string[]).includes(tipo) ? tipo : undefined,
     bairro,
     quartosMin,
@@ -68,6 +75,7 @@ export default async function VitrinePage({
 
   const temFiltro =
     !!q ||
+    !!tipoNegocio ||
     !!tipo ||
     !!bairro ||
     quartosMin != null ||
@@ -87,11 +95,11 @@ export default async function VitrinePage({
         <header className="flex flex-col gap-2">
           <p className="text-sm font-medium text-primary">Marketplace</p>
           <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-            Imóveis à venda em Uberlândia
+            Imóveis para venda e locação em Uberlândia
           </h1>
           <p className="max-w-2xl text-base text-muted-foreground">
-            Encontre seu próximo lar com fotos reais, filtros precisos e contato
-            direto com o anunciante.
+            Encontre imóveis para comprar ou alugar com fotos reais, filtros
+            precisos e contato direto com o anunciante.
           </p>
         </header>
       </Reveal>
@@ -107,7 +115,7 @@ export default async function VitrinePage({
           Filtrar imóveis
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-7">
           {/* Busca livre — ocupa mais espaço */}
           <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-2">
             <label htmlFor="q" className="text-xs font-medium text-foreground">
@@ -120,6 +128,28 @@ export default async function VitrinePage({
               placeholder="Bairro, cidade ou tipo"
               className={campoInput}
             />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="tipo_negocio"
+              className="text-xs font-medium text-foreground"
+            >
+              Operacao
+            </label>
+            <select
+              id="tipo_negocio"
+              name="tipo_negocio"
+              defaultValue={tipoNegocio ?? ""}
+              className={campoSelect}
+            >
+              <option value="">Todas</option>
+              {TIPO_NEGOCIO_OPCOES.map((opcao) => (
+                <option key={opcao.value} value={opcao.value}>
+                  {opcao.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex flex-col gap-1.5">

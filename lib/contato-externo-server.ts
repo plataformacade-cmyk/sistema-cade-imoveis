@@ -68,6 +68,7 @@ function usuarioDoContato(row: UsuarioContatoRow) {
 export async function carregarEstadoContatoExterno(params: {
   negocioId: string;
   statusNegocio: string;
+  tipoNegocio?: string | null;
   sessao: SessaoContato | null;
   servicoAtivo: boolean;
 }): Promise<EstadoContatoExterno | null> {
@@ -180,6 +181,7 @@ export async function carregarEstadoContatoExterno(params: {
   return {
     mostrar,
     negocioId: params.negocioId,
+    tipoNegocio: params.tipoNegocio === "locacao" ? "locacao" : "venda",
     status,
     liberadoEm: fluxoRow?.liberado_em ?? null,
     recusadoEm: fluxoRow?.recusado_em ?? null,

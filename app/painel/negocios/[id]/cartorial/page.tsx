@@ -350,6 +350,7 @@ export default async function CartorialPage({
   const contatoExterno = await carregarEstadoContatoExterno({
     negocioId: negocio.id,
     statusNegocio: negocio.status,
+    tipoNegocio,
     sessao,
     servicoAtivo: Boolean(servico),
   });

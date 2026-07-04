@@ -36,6 +36,10 @@ import {
   statusAgregado,
   variantStatusDoc,
 } from "../documentos/_lib";
+import {
+  rotuloGarantiaLocacao,
+  rotuloPapelNegocio,
+} from "@/lib/negocios/tipo";
 
 type ImovelEmbed = {
   logradouro: string | null;
@@ -61,6 +65,11 @@ type NegocioContrato = {
   tipo: string | null;
   status: string;
   valor_acordado: number | null;
+  tipo_garantia: string | null;
+  prazo_meses: number | null;
+  reajuste_indice: string | null;
+  dia_vencimento: number | null;
+  encargos: string | null;
   escritura_publica: boolean;
   imoveis: ImovelEmbed;
   papeis_negocio: ParticipanteEmbed[];
@@ -207,6 +216,7 @@ function usuarioPodeAssinarPapel(
 function estadoOperacional(
   contrato: ContratoLinha | null,
   statusPix: string,
+  tipoNegocio: "venda" | "locacao",
 ): { label: string; detalhe: string } {
   if (!contrato) {
     return {
@@ -230,6 +240,12 @@ function estadoOperacional(
     return {
       label: "Pendente de assinatura",
       detalhe: "Comprador e proprietario precisam registrar aceite interno.",
+    };
+  }
+  if (tipoNegocio === "locacao") {
+    return {
+      label: "Em revisao",
+      detalhe: "Contrato de locacao assinado e pronto para revisao operacional.",
     };
   }
   if (statusPix === "pendente") {
@@ -263,7 +279,7 @@ export default async function ContratoPage({
     supabase
       .from("negocios")
       .select(
-        "id, imovel_id, tipo, status, valor_acordado, escritura_publica, imoveis(logradouro, numero, bairro, cidade, valor_anuncio), papeis_negocio(papel, ativo, usuario_id, usuarios(nome, email))",
+        "id, imovel_id, tipo, status, valor_acordado, tipo_garantia, prazo_meses, reajuste_indice, dia_vencimento, encargos, escritura_publica, imoveis(logradouro, numero, bairro, cidade, valor_anuncio), papeis_negocio(papel, ativo, usuario_id, usuarios(nome, email))",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -310,23 +326,27 @@ export default async function ContratoPage({
             .eq("contrato_id", contrato.id)
             .order("assinado_em", { ascending: true })
         : Promise.resolve({ data: [], error: null }),
-      supabase
-        .from("documentos_checklist_itens")
-        .select("id, titulo, descricao, obrigatorio")
-        .eq("ativo", true)
-        .eq("perfil", "contrato_minuta")
-        .eq("codigo", "minuta_comprovante_sinal")
-        .in("tipo_negocio", [tipoNegocio, "ambos"])
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("documentos")
-        .select(
-          "id, arquivo_url, status, motivo_reprovacao, criado_em, revisado_em",
-        )
-        .eq("negocio_id", id)
-        .eq("tipo_doc", "minuta_comprovante_sinal")
-        .order("criado_em", { ascending: false }),
+      tipoNegocio === "venda"
+        ? supabase
+            .from("documentos_checklist_itens")
+            .select("id, titulo, descricao, obrigatorio")
+            .eq("ativo", true)
+            .eq("perfil", "contrato_minuta")
+            .eq("codigo", "minuta_comprovante_sinal")
+            .in("tipo_negocio", [tipoNegocio, "ambos"])
+            .limit(1)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      tipoNegocio === "venda"
+        ? supabase
+            .from("documentos")
+            .select(
+              "id, arquivo_url, status, motivo_reprovacao, criado_em, revisado_em",
+            )
+            .eq("negocio_id", id)
+            .eq("tipo_doc", "minuta_comprovante_sinal")
+            .order("criado_em", { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
       negocio.imovel_id
         ? supabase
             .from("servicos_juridicos_contratacoes")
@@ -375,6 +395,7 @@ export default async function ContratoPage({
   const contatoExterno = await carregarEstadoContatoExterno({
     negocioId: negocio.id,
     statusNegocio: negocio.status,
+    tipoNegocio,
     sessao,
     servicoAtivo: Boolean(servico),
   });
@@ -406,7 +427,7 @@ export default async function ContratoPage({
   );
 
   const statusPix = statusAgregado(pixDocs);
-  const estado = estadoOperacional(contrato, statusPix);
+  const estado = estadoOperacional(contrato, statusPix, tipoNegocio);
   const usuarioId = sessao?.user.id ?? "";
   const assinavel =
     contrato != null &&
@@ -667,7 +688,7 @@ export default async function ContratoPage({
                     >
                       <div>
                         <p className="text-sm font-medium capitalize">
-                          {papel}
+                          {rotuloPapelNegocio(papel, tipoNegocio)}
                         </p>
                         <p className="text-muted-foreground text-xs">
                           {assinatura
@@ -695,80 +716,136 @@ export default async function ContratoPage({
                 })}
               </section>
 
-              <section className="flex flex-col gap-3 rounded-lg border p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+              {tipoNegocio === "venda" ? (
+                <section className="flex flex-col gap-3 rounded-lg border p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h2 className="flex items-center gap-2 text-sm font-semibold">
+                        <Receipt className="size-4" />
+                        Comprovante de sinal/Pix
+                      </h2>
+                      <p className="text-muted-foreground text-sm">
+                        {pixItem?.descricao ??
+                          "Anexe o comprovante de Pix ou transferencia quando houver sinal."}
+                      </p>
+                    </div>
+                    <Badge variant={variantStatusDoc(statusPix)}>
+                      {rotuloStatusDoc(statusPix)}
+                    </Badge>
+                  </div>
+
+                  {pixItem && usuarioId ? (
+                    <EnviarDocumentoItem
+                      negocioId={negocio.id}
+                      usuarioId={usuarioId}
+                      checklistItemId={pixItem.id}
+                    />
+                  ) : (
+                    <p className="text-muted-foreground text-sm">
+                      Item de checklist nao disponivel para este tipo de negocio.
+                    </p>
+                  )}
+
+                  {pixDocs.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      {pixDocs.map((doc) => {
+                        const link = linksPix.get(doc.id);
+                        return (
+                          <div
+                            key={doc.id}
+                            className="flex flex-wrap items-start justify-between gap-3 rounded-md bg-muted/40 p-3"
+                          >
+                            <div>
+                              {link ? (
+                                <a
+                                  href={link}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-primary text-sm underline underline-offset-2"
+                                >
+                                  Ver comprovante
+                                </a>
+                              ) : (
+                                <p className="text-sm">Comprovante enviado</p>
+                              )}
+                              <p className="text-muted-foreground text-xs">
+                                Enviado em {formatDataHora(doc.criado_em)}
+                              </p>
+                              {doc.motivo_reprovacao && (
+                                <p className="text-destructive text-xs">
+                                  {doc.motivo_reprovacao}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              <Badge variant={variantStatusDoc(doc.status)}>
+                                {rotuloStatusDoc(doc.status)}
+                              </Badge>
+                              {podeRevisar && (
+                                <StatusDocumentoButtons documentoId={doc.id} />
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              ) : (
+                <section className="flex flex-col gap-3 rounded-lg border p-4">
                   <div>
-                    <h2 className="flex items-center gap-2 text-sm font-semibold">
-                      <Receipt className="size-4" />
-                      Comprovante de sinal/Pix
+                    <h2 className="text-sm font-semibold">
+                      Dados da locacao
                     </h2>
                     <p className="text-muted-foreground text-sm">
-                      {pixItem?.descricao ??
-                        "Anexe o comprovante de Pix ou transferencia quando houver sinal."}
+                      Locacao nao exige comprovante de sinal/Pix nem etapa
+                      cartorial nesta v1.
                     </p>
                   </div>
-                  <Badge variant={variantStatusDoc(statusPix)}>
-                    {rotuloStatusDoc(statusPix)}
-                  </Badge>
-                </div>
-
-                {pixItem && usuarioId ? (
-                  <EnviarDocumentoItem
-                    negocioId={negocio.id}
-                    usuarioId={usuarioId}
-                    checklistItemId={pixItem.id}
-                  />
-                ) : (
-                  <p className="text-muted-foreground text-sm">
-                    Item de checklist nao disponivel para este tipo de negocio.
-                  </p>
-                )}
-
-                {pixDocs.length > 0 && (
-                  <div className="flex flex-col gap-2">
-                    {pixDocs.map((doc) => {
-                      const link = linksPix.get(doc.id);
-                      return (
-                        <div
-                          key={doc.id}
-                          className="flex flex-wrap items-start justify-between gap-3 rounded-md bg-muted/40 p-3"
-                        >
-                          <div>
-                            {link ? (
-                              <a
-                                href={link}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-primary text-sm underline underline-offset-2"
-                              >
-                                Ver comprovante
-                              </a>
-                            ) : (
-                              <p className="text-sm">Comprovante enviado</p>
-                            )}
-                            <p className="text-muted-foreground text-xs">
-                              Enviado em {formatDataHora(doc.criado_em)}
-                            </p>
-                            {doc.motivo_reprovacao && (
-                              <p className="text-destructive text-xs">
-                                {doc.motivo_reprovacao}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex flex-col items-end gap-2">
-                            <Badge variant={variantStatusDoc(doc.status)}>
-                              {rotuloStatusDoc(doc.status)}
-                            </Badge>
-                            {podeRevisar && (
-                              <StatusDocumentoButtons documentoId={doc.id} />
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </section>
+                  <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                    <div>
+                      <dt className="text-muted-foreground text-xs">
+                        Garantia
+                      </dt>
+                      <dd>{rotuloGarantiaLocacao(negocio.tipo_garantia)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground text-xs">Prazo</dt>
+                      <dd>
+                        {negocio.prazo_meses
+                          ? `${negocio.prazo_meses} meses`
+                          : "Nao informado"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground text-xs">
+                        Reajuste
+                      </dt>
+                      <dd>{negocio.reajuste_indice || "Nao informado"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground text-xs">
+                        Vencimento
+                      </dt>
+                      <dd>
+                        {negocio.dia_vencimento
+                          ? `Dia ${negocio.dia_vencimento}`
+                          : "Nao informado"}
+                      </dd>
+                    </div>
+                    {negocio.encargos && (
+                      <div className="sm:col-span-2">
+                        <dt className="text-muted-foreground text-xs">
+                          Encargos
+                        </dt>
+                        <dd className="whitespace-pre-wrap">
+                          {negocio.encargos}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                </section>
+              )}
 
               {contatoExterno?.mostrar && !servico && (
                 <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
@@ -834,13 +911,45 @@ export default async function ContratoPage({
               </dd>
             </div>
             <div>
-              <dt className="text-muted-foreground text-xs">Escritura publica</dt>
+              <dt className="text-muted-foreground text-xs">
+                {tipoNegocio === "locacao" ? "Cartorial" : "Escritura publica"}
+              </dt>
               <dd>
-                {negocio.escritura_publica || exigeEscritura
-                  ? "Obrigatoria em cartorio"
-                  : "Nao obrigatoria"}
+                {tipoNegocio === "locacao"
+                  ? "Nao aplicavel"
+                  : negocio.escritura_publica || exigeEscritura
+                    ? "Obrigatoria em cartorio"
+                    : "Nao obrigatoria"}
               </dd>
             </div>
+            {tipoNegocio === "locacao" && (
+              <>
+                <div>
+                  <dt className="text-muted-foreground text-xs">Garantia</dt>
+                  <dd>{rotuloGarantiaLocacao(negocio.tipo_garantia)}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs">Prazo</dt>
+                  <dd>
+                    {negocio.prazo_meses
+                      ? `${negocio.prazo_meses} meses`
+                      : "Nao informado"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs">Reajuste</dt>
+                  <dd>{negocio.reajuste_indice || "Nao informado"}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs">Vencimento</dt>
+                  <dd>
+                    {negocio.dia_vencimento
+                      ? `Dia ${negocio.dia_vencimento}`
+                      : "Nao informado"}
+                  </dd>
+                </div>
+              </>
+            )}
             {comissao && (
               <>
                 <div>
@@ -863,7 +972,7 @@ export default async function ContratoPage({
             )}
           </dl>
 
-          {(negocio.escritura_publica || exigeEscritura) && (
+          {tipoNegocio === "venda" && (negocio.escritura_publica || exigeEscritura) && (
             <p className="mt-6 rounded-lg bg-amber-500/10 px-3 py-2 text-sm">
               Atencao: por se tratar de venda acima de 30 salarios minimos
               ({formatBRL(LIMITE_ESCRITURA)}), a transferencia exige escritura
@@ -873,10 +982,10 @@ export default async function ContratoPage({
 
           <div className="mt-12 grid gap-12 sm:grid-cols-2">
             <div className="border-t pt-2 text-center text-sm">
-              Vendedor / Locador
+              {tipoNegocio === "locacao" ? "Locador" : "Vendedor"}
             </div>
             <div className="border-t pt-2 text-center text-sm">
-              Comprador / Locatario
+              {tipoNegocio === "locacao" ? "Locatario" : "Comprador"}
             </div>
           </div>
         </section>

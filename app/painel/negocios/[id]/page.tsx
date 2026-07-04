@@ -37,6 +37,7 @@ import { FollowupsExternosCard } from "../_components/followups-externos-card";
 import { SuportePosConclusaoCard } from "../_components/suporte-pos-conclusao-card";
 import { carregarEstadoContatoExterno } from "@/lib/contato-externo-server";
 import type { FollowupExternoResumo } from "@/lib/followups-externos";
+import { rotuloPapelNegocio } from "@/lib/negocios/tipo";
 
 type ImovelEmbed = {
   logradouro: string | null;
@@ -142,6 +143,7 @@ export default async function NegocioDetalhePage({
   const contatoExterno = await carregarEstadoContatoExterno({
     negocioId: negocio.id,
     statusNegocio: negocio.status,
+    tipoNegocio,
     sessao,
     servicoAtivo: Boolean(servico),
   });
@@ -195,13 +197,15 @@ export default async function NegocioDetalhePage({
             <FileSignature className="size-4" />
             Contrato
           </Link>
-          <Link
-            href={`/painel/negocios/${negocio.id}/cartorial`}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            <Landmark className="size-4" />
-            Cartorial
-          </Link>
+          {tipoNegocio === "venda" && (
+            <Link
+              href={`/painel/negocios/${negocio.id}/cartorial`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <Landmark className="size-4" />
+              Cartorial
+            </Link>
+          )}
           <AbrirConversaButton negocioId={negocio.id} />
         </div>
       </div>
@@ -214,7 +218,7 @@ export default async function NegocioDetalhePage({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <dl className="grid gap-4 sm:grid-cols-3">
+          <dl className="grid gap-4 sm:grid-cols-4">
             <div className="flex flex-col gap-1">
               <dt className="text-muted-foreground text-xs">Status</dt>
               <dd>
@@ -224,9 +228,16 @@ export default async function NegocioDetalhePage({
               </dd>
             </div>
             <div className="flex flex-col gap-1">
+              <dt className="text-muted-foreground text-xs">Operacao</dt>
+              <dd className="capitalize">
+                {tipoNegocio === "locacao" ? "Locacao" : "Venda"}
+              </dd>
+            </div>
+            <div className="flex flex-col gap-1">
               <dt className="text-muted-foreground text-xs">Valor acordado</dt>
               <dd className="tabular-nums">
                 {formatBRL(negocio.valor_acordado)}
+                {tipoNegocio === "locacao" ? "/mes" : ""}
               </dd>
             </div>
             <div className="flex flex-col gap-1">
@@ -298,7 +309,10 @@ export default async function NegocioDetalhePage({
                       <TableCell>
                         {p.usuarios?.nome || p.usuarios?.email || "—"}
                       </TableCell>
-                      <TableCell>{rotuloPapel(p.papel)}</TableCell>
+                      <TableCell>
+                        {rotuloPapelNegocio(p.papel, tipoNegocio) ??
+                          rotuloPapel(p.papel)}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={p.ativo ? "outline" : "secondary"}>
                           {p.ativo ? "Ativo" : "Inativo"}

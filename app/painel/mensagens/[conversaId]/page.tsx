@@ -11,6 +11,7 @@ import { SugerirVisitaForm } from "../_components/sugerir-visita-form";
 import { VisitaChatCard } from "../_components/visita-chat-card";
 import { EnviarPropostaChatForm } from "../_components/enviar-proposta-chat-form";
 import { PropostaChatCard } from "../_components/proposta-chat-card";
+import { normalizarTipoNegocio } from "@/lib/negocios/tipo";
 
 type ConversaDetalhe = {
   id: string;
@@ -19,6 +20,7 @@ type ConversaDetalhe = {
   negocios: {
     id: string;
     status: string;
+    tipo: string | null;
     imoveis: {
       logradouro: string | null;
       numero: string | null;
@@ -52,6 +54,12 @@ type PropostaLinha = {
   valor: number | null;
   condicoes: string | null;
   status: string;
+  tipo_negocio: string | null;
+  tipo_garantia: string | null;
+  prazo_meses: number | null;
+  reajuste_indice: string | null;
+  dia_vencimento: number | null;
+  encargos: string | null;
   usuarios: { nome: string | null; email: string | null } | null;
 };
 
@@ -83,6 +91,12 @@ type PropostaMetadata = {
   valor?: number | null;
   condicoes?: string | null;
   status?: string;
+  tipo_negocio?: string | null;
+  tipo_garantia?: string | null;
+  prazo_meses?: number | null;
+  reajuste_indice?: string | null;
+  dia_vencimento?: number | null;
+  encargos?: string | null;
 };
 
 function lerPropostaMetadata(valor: unknown): PropostaMetadata {
@@ -99,6 +113,27 @@ function lerPropostaMetadata(valor: unknown): PropostaMetadata {
     condicoes:
       typeof metadata.condicoes === "string" ? metadata.condicoes : null,
     status: typeof metadata.status === "string" ? metadata.status : undefined,
+    tipo_negocio:
+      typeof metadata.tipo_negocio === "string"
+        ? metadata.tipo_negocio
+        : null,
+    tipo_garantia:
+      typeof metadata.tipo_garantia === "string"
+        ? metadata.tipo_garantia
+        : null,
+    prazo_meses:
+      typeof metadata.prazo_meses === "number"
+        ? metadata.prazo_meses
+        : null,
+    reajuste_indice:
+      typeof metadata.reajuste_indice === "string"
+        ? metadata.reajuste_indice
+        : null,
+    dia_vencimento:
+      typeof metadata.dia_vencimento === "number"
+        ? metadata.dia_vencimento
+        : null,
+    encargos: typeof metadata.encargos === "string" ? metadata.encargos : null,
   };
 }
 
@@ -131,7 +166,7 @@ export default async function ThreadPage({
     supabase
       .from("conversas")
       .select(
-        "id, negocio_id, criado_em, negocios(id, status, imoveis(logradouro, numero, bairro, cidade))",
+        "id, negocio_id, criado_em, negocios(id, status, tipo, imoveis(logradouro, numero, bairro, cidade))",
       )
       .eq("id", conversaId)
       .maybeSingle(),
@@ -170,7 +205,9 @@ export default async function ThreadPage({
       .eq("negocio_id", conversa.negocio_id),
     supabase
       .from("propostas")
-      .select("id, autor_id, valor, condicoes, status, usuarios(nome, email)")
+      .select(
+        "id, autor_id, valor, condicoes, status, tipo_negocio, tipo_garantia, prazo_meses, reajuste_indice, dia_vencimento, encargos, usuarios(nome, email)",
+      )
       .eq("negocio_id", conversa.negocio_id),
   ]);
 
@@ -178,6 +215,7 @@ export default async function ThreadPage({
     String(papel.papel),
   );
   const statusNegocio = conversa.negocios?.status ?? "";
+  const tipoNegocio = normalizarTipoNegocio(conversa.negocios?.tipo ?? "venda");
   const podeSugerirVisita =
     sessao.isAdmin ||
     papeisUsuario.some((papel) =>
@@ -295,6 +333,34 @@ export default async function ThreadPage({
                       proposta?.status ?? propostaMetadata.status,
                     )}
                     podeResponder={podeResponderProposta}
+                    tipoNegocio={
+                      proposta?.tipo_negocio ??
+                      propostaMetadata.tipo_negocio ??
+                      tipoNegocio
+                    }
+                    tipoGarantia={
+                      proposta?.tipo_garantia ??
+                      propostaMetadata.tipo_garantia ??
+                      null
+                    }
+                    prazoMeses={
+                      proposta?.prazo_meses ??
+                      propostaMetadata.prazo_meses ??
+                      null
+                    }
+                    reajusteIndice={
+                      proposta?.reajuste_indice ??
+                      propostaMetadata.reajuste_indice ??
+                      null
+                    }
+                    diaVencimento={
+                      proposta?.dia_vencimento ??
+                      propostaMetadata.dia_vencimento ??
+                      null
+                    }
+                    encargos={
+                      proposta?.encargos ?? propostaMetadata.encargos ?? null
+                    }
                   />
                 ) : (
                   <div
@@ -334,6 +400,7 @@ export default async function ThreadPage({
             <EnviarPropostaChatForm
               negocioId={conversa.negocio_id}
               conversaId={conversa.id}
+              tipoNegocio={tipoNegocio}
             />
           </div>
         )}
