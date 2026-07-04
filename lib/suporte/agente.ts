@@ -53,7 +53,13 @@ async function responderHermes(
 ): Promise<RespostaAgente | null> {
   const baseUrl = process.env.HERMES_API_URL?.replace(/\/+$/, "");
   const token = process.env.HERMES_API_TOKEN;
-  if (!baseUrl || !token) return null;
+  if (!baseUrl || !token) {
+    console.warn("[hermes] fallback: env ausente", {
+      hasUrl: Boolean(baseUrl),
+      hasToken: Boolean(token),
+    });
+    return null;
+  }
 
   try {
     const ctrl = new AbortController();
@@ -73,17 +79,26 @@ async function responderHermes(
       }),
     }).finally(() => clearTimeout(timer));
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.warn("[hermes] fallback: resposta nao ok", { status: response.status });
+      return null;
+    }
     const data = await response.json();
     const texto = typeof data?.resposta === "string" ? data.resposta.trim() : "";
-    if (!texto) return null;
+    if (!texto) {
+      console.warn("[hermes] fallback: resposta vazia");
+      return null;
+    }
 
     return {
       resposta: texto,
       sugereAtendente: Boolean(data?.sugereAtendente),
       modo: "hermes",
     };
-  } catch {
+  } catch (error) {
+    console.warn("[hermes] fallback: erro de rede", {
+      name: error instanceof Error ? error.name : "unknown",
+    });
     return null;
   }
 }
