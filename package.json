@@ -9,6 +9,8 @@
     "lint": "eslint",
     "pauta:reais": "node scripts/pauta-reais.mjs gerar",
     "pauta:listar": "node scripts/pauta-reais.mjs listar",
+    "social:gerar": "node scripts/social-conteudo.mjs gerar",
+    "social:listar": "node scripts/social-conteudo.mjs listar",
     "secrets:check": "node scripts/validar-secrets.mjs"
   },
   "dependencies": {

@@ -1,0 +1,81 @@
+[
+  {
+    "id": "social-carrossel-alugar-ou-comprar-como-decidir",
+    "tipo": "carrossel",
+    "status": "rascunho",
+    "origem": "blog",
+    "origem_slug": "alugar-ou-comprar-como-decidir",
+    "titulo": "Alugar ou comprar? Como tomar a decisão certa",
+    "canais": [
+      "Instagram",
+      "TikTok",
+      "Telegram"
+    ],
+    "criado_em": "2026-07-04T16:01:45.702Z",
+    "atualizado_em": "2026-07-04T16:01:45.703Z",
+    "formato": "carrossel 6-8 slides",
+    "slides": [
+      {
+        "numero": 1,
+        "titulo": "Alugar ou comprar? Como tomar a decisão certa",
+        "texto": "Guia rapido da Cade Imoveis para decidir com mais seguranca."
+      },
+      {
+        "numero": 2,
+        "titulo": "O que voce precisa saber",
+        "texto": "Não existe resposta única. Veja os pontos que realmente importam (dinheiro, tempo e estilo de vida) para decidir entre alugar e comprar."
+      },
+      {
+        "numero": 3,
+        "titulo": "Ponto importante",
+        "texto": "Não existe resposta única para alugar ou comprar: a escolha depende do seu horizonte de tempo, da estabilidade da sua renda e do seu estilo de v..."
+      },
+      {
+        "numero": 4,
+        "titulo": "Ponto importante",
+        "texto": "Alugar ou comprar é uma das perguntas mais comuns que a gente recebe, e a resposta honesta depende muito mais do seu momento de vida do que de q..."
+      },
+      {
+        "numero": 5,
+        "titulo": "Ponto importante",
+        "texto": "Alugar dá flexibilidade. Se você ainda não sabe onde quer se fixar, está mudando de cidade, planeja crescer a família em breve ou prefere não co..."
+      },
+      {
+        "numero": 6,
+        "titulo": "Ponto importante",
+        "texto": "Alugar também transfere ao proprietário os custos grandes de manutenção, como troca de telhado ou infiltração séria, e a variação do mercado. Vo..."
+      },
+      {
+        "numero": 7,
+        "titulo": "Quer continuar?",
+        "texto": "Veja imoveis, tire duvidas e anuncie pela plataforma Cade Imoveis."
+      }
+    ],
+    "legenda": "Alugar ou comprar? Como tomar a decisão certa\n\nSalve este guia e veja mais em /blog/alugar-ou-comprar-como-decidir.",
+    "design": {
+      "proporcao": "4:5",
+      "paleta": "laranja Cade como primario, azul ceu vivo como apoio",
+      "observacoes": "usar cards limpos, pouco texto por slide e CTA final para plataforma"
+    }
+  },
+  {
+    "id": "social-noticia-alugar-ou-comprar-como-decidir",
+    "tipo": "noticia",
+    "status": "rascunho",
+    "origem": "blog",
+    "origem_slug": "alugar-ou-comprar-como-decidir",
+    "titulo": "Alugar ou comprar? Como tomar a decisão certa",
+    "canais": [
+      "Instagram",
+      "Telegram",
+      "YouTube Community"
+    ],
+    "criado_em": "2026-07-04T16:01:45.747Z",
+    "atualizado_em": "2026-07-04T16:01:45.748Z",
+    "formato": "post noticia",
+    "manchete": "Alugar ou comprar? Como tomar a decisão certa",
+    "corpo": "Não existe resposta única. Veja os pontos que realmente importam (dinheiro, tempo e estilo de vida) para decidir entre alugar e comprar.",
+    "legenda": "Não existe resposta única. Veja os pontos que realmente importam (dinheiro, tempo e estilo de vida) para decidir entre alugar e comprar.\n\nLeia o guia completo: /blog/alugar-ou-comprar-como-decidir",
+    "cta": "Ler no blog da Cade"
+  }
+]

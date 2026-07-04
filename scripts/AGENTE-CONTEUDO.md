@@ -53,3 +53,7 @@ Para validar a fila sem gerar artigo:
 ```bash
 node scripts/agente-conteudo.mjs --validar-pauta
 ```
+
+## Reaproveitar em social
+
+Use `scripts/social-conteudo.mjs` para transformar um artigo em carrossel, noticia, design estatico ou roteiro/avatar. O script gera rascunhos em `scripts/social-conteudo.json`; nada e publicado automaticamente.
