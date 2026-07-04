@@ -8,11 +8,12 @@ export type RespostaAgente = {
   resposta: string;
   /** true quando o agente sugere escalar para um atendente humano. */
   sugereAtendente: boolean;
-  /** "ia" quando respondeu via modelo; "basico" quando via FAQ local. */
-  modo: "ia" | "basico" | "consultor";
+  /** Origem da resposta: Hermes, IA direta, consultor de busca ou FAQ local. */
+  modo: "hermes" | "ia" | "basico" | "consultor";
 };
 
 const MODELO = process.env.OPENAI_MODELO_SUPORTE || "gpt-4o-mini";
+const HERMES_TIMEOUT_MS = 18_000;
 
 /** Normaliza para casar gatilhos (sem acento, minúsculo). */
 function normalizar(s: string): string {
@@ -44,12 +45,57 @@ function responderBasico(papel: Papel | "visitante", pergunta: string): Resposta
   };
 }
 
-/** Resposta via OpenAI quando há OPENAI_API_KEY; senão cai no modo básico. */
+/** Tenta delegar ao Hermes quando o serviço externo está configurado. */
+async function responderHermes(
+  papel: Papel | "visitante",
+  historico: TurnoChat[],
+  pergunta: string,
+): Promise<RespostaAgente | null> {
+  const baseUrl = process.env.HERMES_API_URL?.replace(/\/+$/, "");
+  const token = process.env.HERMES_API_TOKEN;
+  if (!baseUrl || !token) return null;
+
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), HERMES_TIMEOUT_MS);
+    const response = await fetch(`${baseUrl}/v1/support/respond`, {
+      method: "POST",
+      signal: ctrl.signal,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        papel,
+        historico: historico.slice(-10),
+        pergunta,
+        systemPrompt: systemPrompt(papel),
+      }),
+    }).finally(() => clearTimeout(timer));
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    const texto = typeof data?.resposta === "string" ? data.resposta.trim() : "";
+    if (!texto) return null;
+
+    return {
+      resposta: texto,
+      sugereAtendente: Boolean(data?.sugereAtendente),
+      modo: "hermes",
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function responder(
   papel: Papel | "visitante",
   historico: TurnoChat[],
   pergunta: string,
 ): Promise<RespostaAgente> {
+  const respostaHermes = await responderHermes(papel, historico, pergunta);
+  if (respostaHermes) return respostaHermes;
+
   const chave = process.env.OPENAI_API_KEY;
   // Sem chave configurada → modo básico (a plataforma segue funcionando).
   if (!chave) return responderBasico(papel, pergunta);

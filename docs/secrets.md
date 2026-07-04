@@ -28,10 +28,10 @@ Este documento e o inventario canonico de variaveis para a `OPE-208`. Ele nao de
 | `OPENAI_MODELO_SUPORTE` | local, Vercel | Nao | Default atual: `gpt-4o-mini`. |
 | `OPENAI_MODELO` | local, GitHub Actions | Nao | Default atual do agente: `gpt-5`. |
 | `IDEOGRAM_API_KEY` | local, GitHub Actions | Sim para capa real | Workflow atual consome essa chave. |
-| `ANTHROPIC_API_KEY` | local, Vercel/Hermes server | Futuro imediato | Bloqueia Hermes/OPE-206. |
-| `ANTHROPIC_MODEL` | local, Vercel/Hermes server | Futuro imediato | Definir modelo padrao do Hermes. |
-| `HERMES_API_URL` | local, Vercel | Futuro imediato | URL do servico Hermes. |
-| `HERMES_API_TOKEN` | local, Vercel | Futuro imediato | Token service-to-service para Hermes. |
+| `ANTHROPIC_API_KEY` | Supabase Vault, local, Vercel, Hermes server | Sim para Hermes | Chave Anthropic validada sem expor valor; usada pelo servico externo. |
+| `ANTHROPIC_MODEL` | Supabase Vault, local, Vercel, Hermes server | Sim para Hermes | Default atual: `claude-sonnet-5`. |
+| `HERMES_API_URL` | Supabase Vault, local, Vercel | Sim para Hermes | URL do servico Hermes. Atual: `http://187.77.35.11`. |
+| `HERMES_API_TOKEN` | Supabase Vault, local, Vercel, Hermes server | Sim para Hermes | Token service-to-service para Hermes. |
 | `PERPLEXITY_API_KEY` | local, GitHub Actions/Hermes | Futuro | Entra quando `OPE-240` migrar pesquisa do agente. |
 | `HIGGSFIELD_API_KEY` | local, GitHub Actions/Hermes | Futuro | Entra quando `OPE-240` migrar imagens. |
 | `NEXT_PUBLIC_SENTRY_DSN` | local, Vercel | Planejado | Publica por natureza, mas sem implementacao runtime hoje. |

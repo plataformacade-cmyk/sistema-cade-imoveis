@@ -58,6 +58,10 @@ Opcionais:
 - `OPENAI_MODELO_SUPORTE`: modelo do suporte, fallback atual `gpt-4o-mini`.
 - `OPENAI_MODELO`: modelo do agente de conteudo, fallback atual `gpt-5`.
 - `IDEOGRAM_API_KEY`: habilita geracao real de capas no agente de conteudo.
+- `ANTHROPIC_API_KEY`: chave do Hermes no servidor externo.
+- `ANTHROPIC_MODEL`: modelo padrao do Hermes, atual `claude-sonnet-5`.
+- `HERMES_API_URL`: URL do servico Hermes consumida pelo app.
+- `HERMES_API_TOKEN`: token service-to-service entre app e Hermes.
 - `NEXT_PUBLIC_SENTRY_DSN` e `RESEND_API_KEY`: planejadas/pendentes conforme docs de deploy.
 
 Aliases locais usados por scripts:
@@ -66,12 +70,8 @@ Aliases locais usados por scripts:
 - `ANON`: alias de `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 - `SROLE`: alias de `SUPABASE_SERVICE_ROLE_KEY`.
 
-Futuras para Hermes/marketing:
+Futuras para marketing:
 
-- `ANTHROPIC_API_KEY`
-- `ANTHROPIC_MODEL`
-- `HERMES_API_URL`
-- `HERMES_API_TOKEN`
 - `PERPLEXITY_API_KEY`
 - `HIGGSFIELD_API_KEY`
 

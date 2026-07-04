@@ -83,7 +83,7 @@ Regras:
 - Valores reais ficam em `.env.local`, Vercel Environment Variables, GitHub Actions Secrets ou dashboards externos.
 - `SUPABASE_SERVICE_ROLE_KEY` e tokens de operacao nunca podem ser expostos como `NEXT_PUBLIC_*`.
 - O workflow de conteudo atual so sai de dry-run quando `OPENAI_API_KEY` e `IDEOGRAM_API_KEY` existem no GitHub Actions.
-- Hermes, Perplexity e Higgsfield estao mapeados como variaveis futuras ate as tasks especificas alterarem o runtime.
+- Hermes esta ativo como servico externo em VPS e e consumido pelo suporte quando `HERMES_API_URL` e `HERMES_API_TOKEN` existem; Perplexity e Higgsfield seguem como variaveis futuras de marketing.
 
 ## 7. Pendências priorizadas (próximas)
 
