@@ -367,6 +367,35 @@ export default async function ImovelDetalhePage({
                   </li>
                 ))}
               </ul>
+              {bairroInfo.pontos.length > 0 && (
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  {bairroInfo.pontos.map((ponto) => (
+                    <div
+                      key={ponto.nome}
+                      className="rounded-lg border bg-card p-4"
+                    >
+                      <div className="flex items-start gap-2">
+                        <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
+                        <div>
+                          <p className="text-sm font-semibold">{ponto.nome}</p>
+                          <p className="text-muted-foreground text-xs">
+                            {ponto.categoria}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-muted-foreground mt-3 text-sm">
+                        {ponto.distancia} - {ponto.tempo}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {bairroInfo.pontos.length > 0 && (
+                <p className="text-muted-foreground text-xs">
+                  Distâncias aproximadas por região, sem expor o endereço exato
+                  do imóvel.
+                </p>
+              )}
             </section>
           )}
         </div>
