@@ -45,7 +45,9 @@ export function DialogEditar({ usuario }: { usuario: UsuarioEditavel }) {
   );
 
   useEffect(() => {
-    if (state.message) setAberto(false);
+    if (!state.message) return;
+    const id = window.setTimeout(() => setAberto(false), 0);
+    return () => window.clearTimeout(id);
   }, [state.message]);
 
   return (

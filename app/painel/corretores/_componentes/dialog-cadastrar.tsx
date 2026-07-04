@@ -40,7 +40,9 @@ export function DialogCadastrar({
   );
 
   useEffect(() => {
-    if (state.message) setAberto(false);
+    if (!state.message) return;
+    const id = window.setTimeout(() => setAberto(false), 0);
+    return () => window.clearTimeout(id);
   }, [state.message]);
 
   // Mapas value->label exigidos pelo Select base-ui (para o SelectValue).

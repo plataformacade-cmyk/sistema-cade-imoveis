@@ -25,7 +25,9 @@ export function DialogConvidar() {
 
   // Fecha o dialog quando o convite vai com sucesso.
   useEffect(() => {
-    if (state.message) setAberto(false);
+    if (!state.message) return;
+    const id = window.setTimeout(() => setAberto(false), 0);
+    return () => window.clearTimeout(id);
   }, [state.message]);
 
   return (

@@ -79,6 +79,9 @@ export async function excluirConta(
   _prev: ConfigState,
   _formData: FormData,
 ): Promise<ConfigState> {
+  void _prev;
+  void _formData;
+
   const sessao = await getSessao();
   if (!sessao) return { error: "Sessão expirada. Entre novamente." };
 

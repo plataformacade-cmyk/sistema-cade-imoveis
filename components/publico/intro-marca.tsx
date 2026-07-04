@@ -39,7 +39,11 @@ export function IntroMarca() {
   useEffect(() => {
     // Script decidiu não rodar a intro? Desmonta o overlay ocioso.
     if (!document.documentElement.classList.contains("intro-roda")) {
-      setViva(false);
+      const id = window.setTimeout(() => setViva(false), 0);
+      return () => {
+        window.clearTimeout(id);
+        document.documentElement.classList.remove("intro-ativa", "intro-roda");
+      };
     }
     // Cinto de segurança na desmontagem (navegação no meio da intro).
     return () => {

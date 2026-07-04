@@ -48,7 +48,9 @@ export function AgendarVisitaDialog({ imoveis }: { imoveis: ImovelOpcao[] }) {
 
   // Fecha o diálogo quando a ação concluir com sucesso.
   useEffect(() => {
-    if (state.message) setOpen(false);
+    if (!state.message) return;
+    const id = window.setTimeout(() => setOpen(false), 0);
+    return () => window.clearTimeout(id);
   }, [state.message]);
 
   return (
