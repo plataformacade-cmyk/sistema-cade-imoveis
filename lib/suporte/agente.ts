@@ -96,8 +96,14 @@ async function responderHermes(
       modo: "hermes",
     };
   } catch (error) {
+    const cause = error instanceof Error && "cause" in error ? error.cause : null;
     console.warn("[hermes] fallback: erro de rede", {
       name: error instanceof Error ? error.name : "unknown",
+      message: error instanceof Error ? error.message : "unknown",
+      cause:
+        cause && typeof cause === "object" && "code" in cause
+          ? String(cause.code)
+          : undefined,
     });
     return null;
   }
