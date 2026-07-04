@@ -9,7 +9,7 @@ export type RespostaAgente = {
   /** true quando o agente sugere escalar para um atendente humano. */
   sugereAtendente: boolean;
   /** "ia" quando respondeu via modelo; "basico" quando via FAQ local. */
-  modo: "ia" | "basico";
+  modo: "ia" | "basico" | "consultor";
 };
 
 const MODELO = process.env.OPENAI_MODELO_SUPORTE || "gpt-4o-mini";

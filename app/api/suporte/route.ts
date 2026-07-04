@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getSessao } from "@/lib/auth";
 import { responder, type TurnoChat } from "@/lib/suporte/agente";
+import { responderBuscaImoveis } from "@/lib/suporte/consultor-imoveis";
 import { saudacao } from "@/lib/suporte/base-conhecimento";
 import { registrarEvento } from "@/lib/log";
 
@@ -79,6 +80,10 @@ export async function POST(request: Request) {
 
   // Visitante (não logado): responde sem persistir; convida a criar conta.
   if (!sessao) {
+    const consulta = await responderBuscaImoveis(mensagem);
+    if (consulta) {
+      return NextResponse.json({ conversaId: null, ...consulta, logado: false });
+    }
     const r = await responder("visitante", [], mensagem);
     return NextResponse.json({ conversaId: null, ...r, logado: false });
   }
@@ -116,7 +121,7 @@ export async function POST(request: Request) {
     .limit(20);
   const historico: TurnoChat[] = (hist as TurnoChat[]) ?? [];
 
-  const r = await responder(papel, historico, mensagem);
+  const r = (await responderBuscaImoveis(mensagem)) ?? (await responder(papel, historico, mensagem));
 
   // Registra a resposta do assistente.
   await supabase.from("suporte_mensagens").insert({

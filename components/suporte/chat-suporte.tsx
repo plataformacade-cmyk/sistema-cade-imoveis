@@ -390,8 +390,32 @@ function Balao({
             <UserRound className="size-3" /> {humanoLabel}
           </span>
         )}
-        {corpo}
+        <ConteudoMensagem corpo={corpo} />
       </div>
     </div>
+  );
+}
+
+function ConteudoMensagem({ corpo }: { corpo: string }) {
+  const partes = corpo.split(/((?:https?:\/\/|\/)[^\s]+)/g);
+  return (
+    <>
+      {partes.map((parte, index) => {
+        const ehLink =
+          /^https?:\/\//.test(parte) || parte.startsWith("/plataforma");
+        if (!ehLink) return <span key={index}>{parte}</span>;
+        return (
+          <a
+            key={index}
+            href={parte}
+            target={parte.startsWith("http") ? "_blank" : undefined}
+            rel={parte.startsWith("http") ? "noreferrer" : undefined}
+            className="font-medium underline underline-offset-2"
+          >
+            {parte}
+          </a>
+        );
+      })}
+    </>
   );
 }
