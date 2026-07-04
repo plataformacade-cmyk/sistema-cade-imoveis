@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, Paperclip, Play, Save } from "lucide-react";
+import { CheckCircle2, Paperclip, Play, Save, UserPlus, XCircle } from "lucide-react";
 import {
   anexarArquivoPendenciaCartorial,
   atualizarFluxoCartorial,
@@ -12,6 +12,11 @@ import {
   iniciarFluxoCartorial,
   type CartorialState,
 } from "@/actions/cartorial";
+import {
+  atualizarVinculoPrestadorCartorial,
+  vincularPrestadorCartorial,
+  type PrestadorCartorialState,
+} from "@/actions/prestadores-cartoriais";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,9 +49,30 @@ const papeisPendencia = [
   ["proprietario", "Proprietario"],
   ["corretor", "Corretor"],
   ["admin", "Admin"],
+  ["prestador", "Prestador"],
 ] as const;
 
 function Feedback({ state }: { state: CartorialState }) {
+  useEffect(() => {
+    if (state.message) toast.success(state.message);
+    if (state.error) toast.error(state.error);
+  }, [state]);
+
+  if (!state.error && !state.message) return null;
+  return (
+    <p
+      className={
+        state.error
+          ? "text-destructive text-xs"
+          : "text-muted-foreground text-xs"
+      }
+    >
+      {state.error ?? state.message}
+    </p>
+  );
+}
+
+function FeedbackPrestador({ state }: { state: PrestadorCartorialState }) {
   useEffect(() => {
     if (state.message) toast.success(state.message);
     if (state.error) toast.error(state.error);
@@ -369,6 +395,126 @@ export function ConcluirCartorialForm({ fluxoId }: { fluxoId: string }) {
         </Button>
         <Feedback state={state} />
       </div>
+    </form>
+  );
+}
+
+export function VincularPrestadorCartorialForm({
+  fluxoId,
+  prestadores,
+}: {
+  fluxoId: string;
+  prestadores: {
+    id: string;
+    nome_exibicao: string;
+    tipo: string;
+    empresa: string | null;
+  }[];
+}) {
+  const [state, action, pending] = useActionState<
+    PrestadorCartorialState,
+    FormData
+  >(vincularPrestadorCartorial, {});
+
+  if (prestadores.length === 0) {
+    return (
+      <p className="text-muted-foreground text-sm">
+        Nenhum prestador aprovado disponivel para vinculo.
+      </p>
+    );
+  }
+
+  return (
+    <form action={action} className="grid gap-3 md:grid-cols-3">
+      <input type="hidden" name="fluxo_id" value={fluxoId} />
+      <div className="flex flex-col gap-2">
+        <Label>Prestador</Label>
+        <select
+          name="prestador_id"
+          className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+          required
+        >
+          {prestadores.map((prestador) => (
+            <option key={prestador.id} value={prestador.id}>
+              {prestador.nome_exibicao}
+              {prestador.empresa ? ` - ${prestador.empresa}` : ""}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label>Atuacao</Label>
+        <select
+          name="papel_operacional"
+          defaultValue="despachante"
+          className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+        >
+          {[
+            ["tabeliao", "Tabeliao"],
+            ["despachante", "Despachante"],
+            ["assinante_cartorial", "Assinante cartorial"],
+            ["agente_cartorial", "Agente cartorial"],
+            ["juridico", "Juridico"],
+            ["outro", "Outro"],
+          ].map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label>Observacao</Label>
+        <Input name="observacoes" placeholder="Escopo do apoio" />
+      </div>
+      <div className="flex flex-col items-start gap-2 md:col-span-3">
+        <Button type="submit" variant="outline" disabled={pending}>
+          <UserPlus className="size-4" />
+          {pending ? "Vinculando..." : "Vincular prestador"}
+        </Button>
+        <FeedbackPrestador state={state} />
+      </div>
+    </form>
+  );
+}
+
+export function AtualizarVinculoPrestadorCartorialForm({
+  vinculoId,
+  status,
+}: {
+  vinculoId: string;
+  status: string;
+}) {
+  const [state, action, pending] = useActionState<
+    PrestadorCartorialState,
+    FormData
+  >(atualizarVinculoPrestadorCartorial, {});
+
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-2">
+      <input type="hidden" name="vinculo_id" value={vinculoId} />
+      <div className="flex flex-col gap-1">
+        <Label>Status</Label>
+        <select
+          name="status"
+          defaultValue={status}
+          className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+        >
+          <option value="ativo">Ativo</option>
+          <option value="concluido">Concluido</option>
+          <option value="removido">Removido</option>
+        </select>
+      </div>
+      <Input
+        name="observacoes"
+        placeholder="Observacao"
+        className="max-w-xs"
+      />
+      <Button type="submit" size="sm" variant="outline" disabled={pending}>
+        <XCircle className="size-4" />
+        {pending ? "Atualizando..." : "Atualizar vinculo"}
+      </Button>
+      <FeedbackPrestador state={state} />
     </form>
   );
 }

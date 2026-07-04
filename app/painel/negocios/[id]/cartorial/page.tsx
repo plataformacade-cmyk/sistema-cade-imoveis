@@ -8,6 +8,7 @@ import {
   FileText,
   Landmark,
   Paperclip,
+  UserCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -44,9 +45,11 @@ import {
   AnexarCartorialForm,
   AtualizarFluxoCartorialForm,
   AtualizarPendenciaCartorialForm,
+  AtualizarVinculoPrestadorCartorialForm,
   ConcluirCartorialForm,
   CriarPendenciaCartorialForm,
   IniciarCartorialForm,
+  VincularPrestadorCartorialForm,
 } from "./_components/cartorial-forms";
 
 type ParticipanteEmbed = {
@@ -114,6 +117,31 @@ type AnexoCartorial = {
   arquivo_nome: string | null;
   descricao: string | null;
   criado_em: string | null;
+};
+
+type PrestadorAprovado = {
+  id: string;
+  nome_exibicao: string;
+  tipo: string;
+  empresa: string | null;
+};
+
+type VinculoPrestadorCartorial = {
+  id: string;
+  prestador_id: string;
+  papel_operacional: string;
+  status: string;
+  observacoes: string | null;
+  criado_em: string | null;
+  prestadores_cartoriais: {
+    nome_exibicao: string;
+    tipo: string;
+    empresa: string | null;
+    registro_profissional: string | null;
+    telefone: string | null;
+    email: string | null;
+    status: string;
+  } | null;
 };
 
 type DocumentoCartorial = {
@@ -358,7 +386,14 @@ export default async function CartorialPage({
   const podeContratarServico =
     podeOperar && ["contrato", "cartorial"].includes(negocio.status);
 
-  const [pendenciasRes, anexosRes, checklistRes, documentosRes] = fluxo
+  const [
+    pendenciasRes,
+    anexosRes,
+    checklistRes,
+    documentosRes,
+    prestadoresVinculadosRes,
+    prestadoresAprovadosRes,
+  ] = fluxo
     ? await Promise.all([
         supabase
           .from("negocio_cartorial_pendencias")
@@ -391,8 +426,24 @@ export default async function CartorialPage({
           .eq("negocio_id", negocio.id)
           .like("tipo_doc", "cartorio_%")
           .order("criado_em", { ascending: false }),
+        supabase
+          .from("negocio_cartorial_prestadores")
+          .select(
+            "id, prestador_id, papel_operacional, status, observacoes, criado_em, prestadores_cartoriais(nome_exibicao, tipo, empresa, registro_profissional, telefone, email, status)",
+          )
+          .eq("fluxo_id", fluxo.id)
+          .order("criado_em", { ascending: false }),
+        podeOperar
+          ? supabase
+              .from("prestadores_cartoriais")
+              .select("id, nome_exibicao, tipo, empresa")
+              .eq("status", "aprovado")
+              .order("nome_exibicao", { ascending: true })
+          : Promise.resolve({ data: [], error: null }),
       ])
     : [
+        { data: [], error: null },
+        { data: [], error: null },
         { data: [], error: null },
         { data: [], error: null },
         { data: [], error: null },
@@ -403,7 +454,9 @@ export default async function CartorialPage({
     pendenciasRes.error ||
     anexosRes.error ||
     checklistRes.error ||
-    documentosRes.error
+    documentosRes.error ||
+    prestadoresVinculadosRes.error ||
+    prestadoresAprovadosRes.error
   ) {
     return (
       <p className="text-destructive text-sm">
@@ -416,6 +469,10 @@ export default async function CartorialPage({
   const anexos = (anexosRes.data ?? []) as AnexoCartorial[];
   const checklist = (checklistRes.data ?? []) as ChecklistItem[];
   const documentos = (documentosRes.data ?? []) as DocumentoCartorial[];
+  const prestadoresVinculados = (prestadoresVinculadosRes.data ??
+    []) as unknown as VinculoPrestadorCartorial[];
+  const prestadoresAprovados = (prestadoresAprovadosRes.data ??
+    []) as PrestadorAprovado[];
 
   const linksDocumentos = new Map<string, string>();
   await Promise.all(
@@ -630,6 +687,82 @@ export default async function CartorialPage({
                   {formatBRL(fluxo.custas_valor)}
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Prestadores cartoriais</CardTitle>
+              <CardDescription>
+                Tabeliaes, despachantes, assinantes ou agentes aprovados podem
+                atuar apenas neste fluxo.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              {podeOperar && (
+                <VincularPrestadorCartorialForm
+                  fluxoId={fluxo.id}
+                  prestadores={prestadoresAprovados}
+                />
+              )}
+
+              {prestadoresVinculados.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  Nenhum prestador vinculado ao cartorial.
+                </p>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {prestadoresVinculados.map((vinculo) => {
+                    const prestador = vinculo.prestadores_cartoriais;
+                    return (
+                      <section
+                        key={vinculo.id}
+                        className="flex flex-col gap-3 rounded-lg border p-4"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <UserCheck className="text-muted-foreground size-4" />
+                              <h2 className="text-sm font-semibold">
+                                {prestador?.nome_exibicao ?? "Prestador"}
+                              </h2>
+                              <Badge
+                                variant={
+                                  vinculo.status === "ativo"
+                                    ? "default"
+                                    : "outline"
+                                }
+                              >
+                                {vinculo.status}
+                              </Badge>
+                            </div>
+                            <p className="text-muted-foreground mt-1 text-sm">
+                              {vinculo.papel_operacional}
+                              {prestador?.empresa ? ` - ${prestador.empresa}` : ""}
+                            </p>
+                            <p className="text-muted-foreground mt-1 text-xs">
+                              Registro:{" "}
+                              {prestador?.registro_profissional ?? "-"} |{" "}
+                              {prestador?.email ?? "-"}
+                            </p>
+                            {vinculo.observacoes && (
+                              <p className="text-muted-foreground mt-2 text-sm">
+                                {vinculo.observacoes}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        {podeOperar && (
+                          <AtualizarVinculoPrestadorCartorialForm
+                            vinculoId={vinculo.id}
+                            status={vinculo.status}
+                          />
+                        )}
+                      </section>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
 

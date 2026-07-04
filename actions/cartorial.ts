@@ -91,6 +91,46 @@ function usuarioParticipa(sessao: Sessao, negocio: NegocioCartorial): boolean {
   );
 }
 
+async function prestadorVinculadoAoNegocio(
+  supabase: SupabaseServer,
+  sessao: Sessao,
+  negocioId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("negocio_cartorial_prestadores")
+    .select("id, prestadores_cartoriais!inner(usuario_id, status)")
+    .eq("negocio_id", negocioId)
+    .eq("status", "ativo")
+    .eq("prestadores_cartoriais.usuario_id", sessao.user.id)
+    .eq("prestadores_cartoriais.status", "aprovado")
+    .limit(1)
+    .maybeSingle();
+
+  return Boolean(data?.id);
+}
+
+async function podeAnexarNoCartorial(
+  supabase: SupabaseServer,
+  sessao: Sessao,
+  negocio: NegocioCartorial,
+): Promise<boolean> {
+  return (
+    usuarioParticipa(sessao, negocio) ||
+    (await prestadorVinculadoAoNegocio(supabase, sessao, negocio.id))
+  );
+}
+
+async function podeAtualizarPendencia(
+  supabase: SupabaseServer,
+  sessao: Sessao,
+  negocio: NegocioCartorial,
+): Promise<"operador" | "prestador" | null> {
+  if (podeOperarCartorial(sessao, negocio)) return "operador";
+  if (await prestadorVinculadoAoNegocio(supabase, sessao, negocio.id))
+    return "prestador";
+  return null;
+}
+
 async function carregarNegocio(
   supabase: SupabaseServer,
   negocioId: string,
@@ -386,8 +426,15 @@ export async function atualizarPendenciaCartorial(
   if (pendenciaError || !pendencia)
     return { error: "Nao foi possivel carregar a pendencia." };
   const negocio = await carregarNegocio(supabase, pendencia.negocio_id);
-  if (!negocio || !podeOperarCartorial(sessao, negocio))
+  const permissao = negocio
+    ? await podeAtualizarPendencia(supabase, sessao, negocio)
+    : null;
+  if (!negocio || !permissao)
     return { error: "Voce nao tem permissao para atualizar pendencias." };
+  if (permissao === "prestador" && !["em_andamento", "resolvida"].includes(status))
+    return {
+      error: "Prestador pode marcar pendencia em andamento ou resolvida.",
+    };
 
   const { error } = await supabase
     .from("negocio_cartorial_pendencias")
@@ -417,6 +464,17 @@ export async function atualizarPendenciaCartorial(
       },
     },
   );
+  if (permissao === "prestador") {
+    await registrarEvento("prestador_cartorial_acao", {
+      entidadeId: negocio.id,
+      payload: {
+        acao: "pendencia_atualizada",
+        fluxo_id: pendencia.fluxo_id,
+        pendencia_id: pendencia.id,
+        status_novo: status,
+      },
+    });
+  }
 
   revalidarCartorial(negocio.id);
   return { message: "Pendencia atualizada." };
@@ -441,7 +499,10 @@ export async function anexarArquivoPendenciaCartorial(
   const fluxo = await carregarFluxo(supabase, fluxoId);
   if (!fluxo) return { error: "Nao foi possivel carregar o fluxo cartorial." };
   const negocio = await carregarNegocio(supabase, fluxo.negocio_id);
-  if (!negocio || !usuarioParticipa(sessao, negocio))
+  const podeAnexar = negocio
+    ? await podeAnexarNoCartorial(supabase, sessao, negocio)
+    : false;
+  if (!negocio || !podeAnexar)
     return { error: "Voce nao tem permissao para anexar neste fluxo." };
 
   const { data, error } = await supabase
@@ -465,6 +526,17 @@ export async function anexarArquivoPendenciaCartorial(
     entidadeId: negocio.id,
     payload: { fluxo_id: fluxo.id, pendencia_id: pendenciaId, anexo_id: data.id },
   });
+  if (!usuarioParticipa(sessao, negocio)) {
+    await registrarEvento("prestador_cartorial_acao", {
+      entidadeId: negocio.id,
+      payload: {
+        acao: "anexo_enviado",
+        fluxo_id: fluxo.id,
+        pendencia_id: pendenciaId,
+        anexo_id: data.id,
+      },
+    });
+  }
 
   revalidarCartorial(negocio.id);
   return { message: "Anexo cartorial registrado." };
