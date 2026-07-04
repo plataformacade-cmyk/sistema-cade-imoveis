@@ -15,6 +15,10 @@ export type RespostaAgente = {
 const MODELO = process.env.OPENAI_MODELO_SUPORTE || "gpt-4o-mini";
 const HERMES_TIMEOUT_MS = 18_000;
 
+function limparEnvPrivada(valor: string | undefined): string | undefined {
+  return valor?.replace(/^\uFEFF/, "").trim();
+}
+
 /** Normaliza para casar gatilhos (sem acento, minúsculo). */
 function normalizar(s: string): string {
   return s
@@ -51,8 +55,8 @@ async function responderHermes(
   historico: TurnoChat[],
   pergunta: string,
 ): Promise<RespostaAgente | null> {
-  const baseUrl = process.env.HERMES_API_URL?.replace(/\/+$/, "");
-  const token = process.env.HERMES_API_TOKEN;
+  const baseUrl = limparEnvPrivada(process.env.HERMES_API_URL)?.replace(/\/+$/, "");
+  const token = limparEnvPrivada(process.env.HERMES_API_TOKEN);
   if (!baseUrl || !token) {
     console.warn("[hermes] fallback: env ausente", {
       hasUrl: Boolean(baseUrl),
