@@ -33,6 +33,15 @@ const STATUSES = [
 
 type Tipo = (typeof TIPOS)[number];
 type Status = (typeof STATUSES)[number];
+type SessaoImoveis = NonNullable<Awaited<ReturnType<typeof getSessao>>>;
+type EnderecoDerivado = {
+  cep: string;
+  logradouro: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  uf: string | null;
+  origem: "viacep" | "manual_admin";
+};
 
 function num(v: FormDataEntryValue | null): number | null {
   const s = String(v ?? "").trim();
@@ -53,6 +62,88 @@ function txt(v: FormDataEntryValue | null): string | null {
   return s === "" ? null : s;
 }
 
+function normalizarCep(v: FormDataEntryValue | null): string | null {
+  const cep = String(v ?? "").replace(/\D/g, "");
+  return cep.length === 8 ? cep : null;
+}
+
+function textoEndereco(v: string | null): string | null {
+  if (!v) return null;
+  const limpo = v.replace(/\s+/g, " ").trim();
+  return limpo || null;
+}
+
+function ufEndereco(v: string | null): string | null {
+  const uf = textoEndereco(v)?.toUpperCase() ?? null;
+  return uf && /^[A-Z]{2}$/.test(uf) ? uf : null;
+}
+
+async function buscarEnderecoPorCep(cep: string): Promise<EnderecoDerivado | null> {
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`, {
+      cache: "no-store",
+      next: { revalidate: 0 },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      erro?: boolean;
+      logradouro?: string;
+      bairro?: string;
+      localidade?: string;
+      uf?: string;
+    };
+    if (data.erro) return null;
+    const bairro = textoEndereco(data.bairro ?? null);
+    const cidade = textoEndereco(data.localidade ?? null);
+    const uf = ufEndereco(data.uf ?? null);
+    if (!bairro || !cidade || !uf) return null;
+    return {
+      cep,
+      logradouro: textoEndereco(data.logradouro ?? null),
+      bairro,
+      cidade,
+      uf,
+      origem: "viacep",
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function resolverEndereco(
+  formData: FormData,
+  sessao: SessaoImoveis,
+): Promise<{ erro: string } | { endereco: EnderecoDerivado }> {
+  const cep = normalizarCep(formData.get("cep"));
+  if (!cep) return { erro: "Informe um CEP valido com 8 digitos." };
+
+  const derivado = await buscarEnderecoPorCep(cep);
+  if (derivado) return { endereco: derivado };
+
+  if (sessao.isAdmin) {
+    const bairro = textoEndereco(txt(formData.get("bairro")));
+    const cidade = textoEndereco(txt(formData.get("cidade")));
+    const uf = ufEndereco(txt(formData.get("uf")));
+    if (bairro && cidade && uf) {
+      return {
+        endereco: {
+          cep,
+          logradouro: textoEndereco(txt(formData.get("logradouro"))),
+          bairro,
+          cidade,
+          uf,
+          origem: "manual_admin",
+        },
+      };
+    }
+  }
+
+  return {
+    erro:
+      "Nao foi possivel derivar bairro, cidade e UF pelo CEP. Confira o CEP ou acione um admin para correcao.",
+  };
+}
+
 function lerFotos(v: FormDataEntryValue | null): string[] {
   try {
     const arr = JSON.parse(String(v ?? "[]"));
@@ -64,36 +155,40 @@ function lerFotos(v: FormDataEntryValue | null): string[] {
   return [];
 }
 
-function montarPayload(formData: FormData):
+async function montarPayload(
+  formData: FormData,
+  sessao: SessaoImoveis,
+): Promise<
   | { erro: string }
-  | { dados: Record<string, unknown> } {
+  | { dados: Record<string, unknown>; enderecoOrigem: EnderecoDerivado["origem"] }
+> {
   const tipo = txt(formData.get("tipo")) as Tipo | null;
   const status = (txt(formData.get("status")) ?? "rascunho") as Status;
   const tipo_negocio =
     txt(formData.get("tipo_negocio")) ?? TIPO_NEGOCIO_PADRAO;
-  const cep = txt(formData.get("cep"));
   const valor_anuncio = num(formData.get("valor_anuncio"));
-  const uf = txt(formData.get("uf"));
+  const endereco = await resolverEndereco(formData, sessao);
 
   if (!tipo || !TIPOS.includes(tipo))
     return { erro: "Selecione um tipo de imovel valido." };
   if (!isTipoNegocio(tipo_negocio))
     return { erro: "Selecione se o anuncio e venda ou locacao." };
   if (!STATUSES.includes(status)) return { erro: "Status invalido." };
-  if (!cep) return { erro: "Informe o CEP." };
+  if ("erro" in endereco) return endereco;
   if (valor_anuncio === null || valor_anuncio <= 0)
     return { erro: "Informe um valor de anuncio maior que zero." };
-  if (uf && uf.length !== 2) return { erro: "A UF deve ter 2 caracteres." };
 
   return {
     dados: {
-      cep,
-      logradouro: txt(formData.get("logradouro")),
+      cep: endereco.endereco.cep,
+      logradouro:
+        textoEndereco(txt(formData.get("logradouro"))) ??
+        endereco.endereco.logradouro,
       numero: txt(formData.get("numero")),
       complemento: txt(formData.get("complemento")),
-      bairro: txt(formData.get("bairro")),
-      cidade: txt(formData.get("cidade")),
-      uf: uf ? uf.toUpperCase() : null,
+      bairro: endereco.endereco.bairro,
+      cidade: endereco.endereco.cidade,
+      uf: endereco.endereco.uf,
       tipo,
       tipo_negocio,
       area_m2: num(formData.get("area_m2")),
@@ -104,6 +199,7 @@ function montarPayload(formData: FormData):
       status,
       fotos: lerFotos(formData.get("fotos")),
     },
+    enderecoOrigem: endereco.endereco.origem,
   };
 }
 
@@ -162,7 +258,7 @@ export async function criarImovel(
     redirect(criarDestinoTelefone("/painel/imoveis/novo", "imovel"));
   }
 
-  const r = montarPayload(formData);
+  const r = await montarPayload(formData, sessao);
   if ("erro" in r) return { error: r.erro };
 
   const supabase = await createClient();
@@ -187,6 +283,7 @@ export async function criarImovel(
       tipo: r.dados.tipo,
       tipo_negocio: r.dados.tipo_negocio,
       status: r.dados.status,
+      endereco_origem: r.enderecoOrigem,
     },
   });
 
@@ -223,7 +320,7 @@ export async function editarImovel(
   const id = txt(formData.get("id"));
   if (!id) return { error: "Imovel nao identificado." };
 
-  const r = montarPayload(formData);
+  const r = await montarPayload(formData, sessao);
   if ("erro" in r) return { error: r.erro };
 
   const supabase = await createClient();
@@ -240,6 +337,7 @@ export async function editarImovel(
       tipo: r.dados.tipo,
       tipo_negocio: r.dados.tipo_negocio,
       status: r.dados.status,
+      endereco_origem: r.enderecoOrigem,
     },
   });
 

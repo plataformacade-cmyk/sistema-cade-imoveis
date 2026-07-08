@@ -22,7 +22,7 @@ export default async function NovoImovelPage() {
           Preencha as abas e salve. Começa como rascunho.
         </p>
       </div>
-      <ImovelForm usuarioId={sessao.user.id} />
+      <ImovelForm usuarioId={sessao.user.id} isAdmin={sessao.isAdmin} />
     </div>
   );
 }

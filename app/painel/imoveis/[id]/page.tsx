@@ -61,7 +61,7 @@ export default async function EditarImovelPage({
         seteDias={metricas7d.get(id)!}
         trintaDias={metricas30d.get(id)!}
       />
-      <ImovelForm imovel={imovel} usuarioId={sessao.user.id} />
+      <ImovelForm imovel={imovel} usuarioId={sessao.user.id} isAdmin={sessao.isAdmin} />
     </div>
   );
 }

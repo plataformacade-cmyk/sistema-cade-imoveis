@@ -87,9 +87,11 @@ const MAX_FOTOS = 10;
 export function ImovelForm({
   imovel,
   usuarioId,
+  isAdmin = false,
 }: {
   imovel?: ImovelEditavel;
   usuarioId: string;
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
   const editando = Boolean(imovel);
@@ -147,6 +149,12 @@ export function ImovelForm({
       const res = await fetch(`https://viacep.com.br/ws/${limpo}/json/`);
       const data = await res.json();
       if (data.erro) {
+        if (!isAdmin) {
+          setLogradouro("");
+          setBairro("");
+          setCidade("");
+          setUf("");
+        }
         toast.error("CEP não encontrado.");
         return;
       }
@@ -154,6 +162,13 @@ export function ImovelForm({
       setBairro(data.bairro ?? "");
       setCidade(data.localidade ?? "");
       setUf(data.uf ?? "");
+      if (!data.bairro || !data.localidade || !data.uf) {
+        toast.warning(
+          isAdmin
+            ? "CEP sem bairro/cidade completos. Revise manualmente antes de salvar."
+            : "CEP sem bairro/cidade completos. Confira o CEP ou fale com o suporte.",
+        );
+      }
     } catch {
       toast.error("Não foi possível consultar o CEP.");
     } finally {
@@ -239,6 +254,13 @@ export function ImovelForm({
         name="servico_juridico_tipo_negocio"
         value={servicoTipo}
       />
+      {!isAdmin && (
+        <>
+          <input type="hidden" name="bairro" value={bairro} />
+          <input type="hidden" name="cidade" value={cidade} />
+          <input type="hidden" name="uf" value={uf} />
+        </>
+      )}
 
       <Tabs defaultValue="endereco">
         <TabsList>
@@ -300,31 +322,47 @@ export function ImovelForm({
                 <Label htmlFor="bairro">Bairro</Label>
                 <Input
                   id="bairro"
-                  name="bairro"
+                  name={isAdmin ? "bairro" : undefined}
                   value={bairro}
-                  onChange={(e) => setBairro(e.target.value)}
+                  onChange={(e) => isAdmin && setBairro(e.target.value)}
+                  readOnly={!isAdmin}
+                  aria-describedby="endereco-derivado-ajuda"
                 />
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="cidade">Cidade</Label>
                 <Input
                   id="cidade"
-                  name="cidade"
+                  name={isAdmin ? "cidade" : undefined}
                   value={cidade}
-                  onChange={(e) => setCidade(e.target.value)}
+                  onChange={(e) => isAdmin && setCidade(e.target.value)}
+                  readOnly={!isAdmin}
+                  aria-describedby="endereco-derivado-ajuda"
                 />
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="uf">UF</Label>
                 <Input
                   id="uf"
-                  name="uf"
+                  name={isAdmin ? "uf" : undefined}
                   maxLength={2}
                   value={uf}
-                  onChange={(e) => setUf(e.target.value.toUpperCase())}
+                  onChange={(e) =>
+                    isAdmin && setUf(e.target.value.toUpperCase())
+                  }
+                  readOnly={!isAdmin}
                   placeholder="SP"
+                  aria-describedby="endereco-derivado-ajuda"
                 />
               </div>
+              <p
+                id="endereco-derivado-ajuda"
+                className="text-muted-foreground text-xs sm:col-span-2"
+              >
+                {isAdmin
+                  ? "Bairro, cidade e UF sao derivados do CEP; admin pode corrigir quando a base externa retornar dados incompletos."
+                  : "Bairro, cidade e UF sao derivados do CEP para manter a vitrine consistente."}
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
