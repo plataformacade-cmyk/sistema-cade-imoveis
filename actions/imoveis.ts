@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getSessao } from "@/lib/auth";
-import { criarDestinoAceiteTermos } from "@/lib/auth-redirect";
+import { criarDestinoAceiteTermos, criarDestinoTelefone } from "@/lib/auth-redirect";
 import { registrarEvento } from "@/lib/log";
 import { PACOTE_NAO_CONTRATAR } from "@/lib/servicos-juridicos";
 import { isTipoNegocio, TIPO_NEGOCIO_PADRAO } from "@/lib/negocios/tipo";
@@ -11,6 +11,7 @@ import {
   registrarContratacaoServicoJuridico,
 } from "@/lib/servicos-juridicos-server";
 import { usuarioTemTermosPendentes, type PerfilTermo } from "@/lib/termos";
+import { usuarioTemTelefoneObrigatorio } from "@/lib/telefone";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -156,6 +157,9 @@ export async function criarImovel(
   const perfilTermo = perfilTermoAnunciante(sessao.papel);
   if (await usuarioTemTermosPendentes(sessao.user.id, [perfilTermo])) {
     redirect(criarDestinoAceiteTermos([perfilTermo], "/painel/imoveis/novo", "imovel"));
+  }
+  if (!(await usuarioTemTelefoneObrigatorio(sessao.user.id))) {
+    redirect(criarDestinoTelefone("/painel/imoveis/novo", "imovel"));
   }
 
   const r = montarPayload(formData);

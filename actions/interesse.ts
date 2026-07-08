@@ -3,12 +3,14 @@
 import { redirect } from "next/navigation";
 import {
   criarDestinoAceiteTermos,
+  criarDestinoTelefone,
   criarDestinoInteresse,
   criarLoginHref,
 } from "@/lib/auth-redirect";
 import { registrarEngajamentoImovel } from "@/lib/engajamento/imoveis";
 import { getSessao } from "@/lib/auth";
 import { registrarInteresseNoImovel } from "@/lib/interesse";
+import { usuarioTemTelefoneObrigatorio } from "@/lib/telefone";
 import { usuarioTemTermosPendentes } from "@/lib/termos";
 
 export type InteresseState = { error?: string; message?: string };
@@ -53,6 +55,9 @@ export async function demonstrarInteresse(
 
   if (await usuarioTemTermosPendentes(sessao.user.id, ["comprador"])) {
     redirect(criarDestinoAceiteTermos(["comprador"], destinoInteresse, "interesse"));
+  }
+  if (!(await usuarioTemTelefoneObrigatorio(sessao.user.id))) {
+    redirect(criarDestinoTelefone(destinoInteresse, "interesse"));
   }
 
   const resultado = await registrarInteresseNoImovel(imovelId, sessao);

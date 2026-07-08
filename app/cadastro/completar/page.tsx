@@ -1,7 +1,12 @@
 import { redirect } from "next/navigation";
 import { getSessao } from "@/lib/auth";
-import { criarDestinoAceiteTermos, criarLoginHref } from "@/lib/auth-redirect";
+import {
+  criarDestinoAceiteTermos,
+  criarDestinoTelefone,
+  criarLoginHref,
+} from "@/lib/auth-redirect";
 import { usuarioTemTermosPendentes } from "@/lib/termos";
+import { usuarioTemTelefoneObrigatorio } from "@/lib/telefone";
 import { OnboardingWizard } from "./_wizard";
 
 // Onboarding pos-cadastro: o signup redireciona pra ca automaticamente e o
@@ -24,6 +29,9 @@ export default async function CompletarCadastroPage({
     redirect(
       criarDestinoAceiteTermos(["comprador"], destinoAposTermos, "cadastro"),
     );
+  }
+  if (!(await usuarioTemTelefoneObrigatorio(sessao.user.id))) {
+    redirect(criarDestinoTelefone(destinoAposTermos, "cadastro"));
   }
 
   const primeiroNome = (sessao.user.nome || "").split(" ")[0] || "tudo certo";

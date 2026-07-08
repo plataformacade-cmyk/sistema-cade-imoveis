@@ -1,8 +1,9 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { criarDestinoAceiteTermos } from "@/lib/auth-redirect";
+import { criarDestinoAceiteTermos, criarDestinoTelefone } from "@/lib/auth-redirect";
 import { usuarioTemTermosPendentes } from "@/lib/termos";
+import { usuarioTemTelefoneObrigatorio } from "@/lib/telefone";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -16,6 +17,11 @@ export async function tornarProprietario() {
 
   if (await usuarioTemTermosPendentes(user.id, ["proprietario"])) {
     redirect(criarDestinoAceiteTermos(["proprietario"], "/painel/imoveis/novo", "anunciar"));
+  }
+  if (!(await usuarioTemTelefoneObrigatorio(user.id))) {
+    redirect(
+      criarDestinoTelefone("/cadastro/completar?intencao=anunciar", "anunciar"),
+    );
   }
 
   await supabase.from("usuarios").update({ papel: "proprietario" }).eq("id", user.id);

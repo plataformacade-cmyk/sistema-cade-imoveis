@@ -7,6 +7,7 @@ export const AUTH_NEXT_PADRAO = "/painel";
 export const CADASTRO_NEXT_PADRAO = "/cadastro/completar";
 export const CADASTRO_ANUNCIAR_NEXT = "/cadastro/completar?intencao=anunciar";
 export const TERMOS_NEXT_PADRAO = "/painel";
+export const TELEFONE_NEXT_PADRAO = "/cadastro/completar";
 
 export function ehUuid(valor: string | null | undefined) {
   return Boolean(valor && UUID_RE.test(valor));
@@ -36,6 +37,7 @@ function resolverAuthNextInterno(
   valor: string | string[] | null | undefined,
   fallback = AUTH_NEXT_PADRAO,
   permitirAceiteTermos = true,
+  permitirTelefone = true,
 ): string {
   const raw = Array.isArray(valor) ? valor[0] : valor;
   const destino = raw?.trim();
@@ -52,6 +54,16 @@ function resolverAuthNextInterno(
   if (url.origin !== "https://cade.local") return fallback;
 
   if (url.pathname === "/painel" && !url.search) return AUTH_NEXT_PADRAO;
+  if (url.pathname.startsWith("/painel/negocios/") && !url.search) {
+    const [, , , negocioId] = url.pathname.split("/");
+    if (ehUuid(negocioId)) {
+      const hash = url.hash === "#qualificacao" ? "#qualificacao" : "";
+      return `/painel/negocios/${negocioId}${hash}`;
+    }
+  }
+  if (url.pathname === "/painel/imoveis/novo" && !url.search && !url.hash) {
+    return "/painel/imoveis/novo";
+  }
   if (url.pathname === "/cadastro/completar" && !url.search) {
     return CADASTRO_NEXT_PADRAO;
   }
@@ -75,9 +87,21 @@ function resolverAuthNextInterno(
       url.searchParams.get("next"),
       TERMOS_NEXT_PADRAO,
       false,
+      false,
     );
     const origem = url.searchParams.get("origem")?.trim();
     return criarDestinoAceiteTermos(perfis, next, origem || undefined);
+  }
+
+  if (permitirTelefone && url.pathname === "/cadastro/telefone") {
+    const next = resolverAuthNextInterno(
+      url.searchParams.get("next"),
+      TELEFONE_NEXT_PADRAO,
+      false,
+      false,
+    );
+    const origem = url.searchParams.get("origem")?.trim();
+    return criarDestinoTelefone(next, origem || undefined);
   }
 
   return fallback;
@@ -126,6 +150,22 @@ export function criarDestinoAceiteTermos(
   params.set("next", nextSeguro);
   if (origem?.trim()) params.set("origem", origem.trim().slice(0, 40));
   return `/termos/aceite?${params.toString()}`;
+}
+
+export function criarDestinoTelefone(
+  next: string | null | undefined = TELEFONE_NEXT_PADRAO,
+  origem?: string,
+) {
+  const nextSeguro = resolverAuthNextInterno(
+    next,
+    TELEFONE_NEXT_PADRAO,
+    false,
+    false,
+  );
+  const params = new URLSearchParams();
+  params.set("next", nextSeguro);
+  if (origem?.trim()) params.set("origem", origem.trim().slice(0, 40));
+  return `/cadastro/telefone?${params.toString()}`;
 }
 
 export function criarLoginHref(next: string | null | undefined) {

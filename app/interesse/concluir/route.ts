@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import {
   criarDestinoAceiteTermos,
+  criarDestinoTelefone,
   criarDestinoInteresse,
   criarLoginHref,
 } from "@/lib/auth-redirect";
 import { getSessao } from "@/lib/auth";
 import { registrarInteresseNoImovel } from "@/lib/interesse";
+import { usuarioTemTelefoneObrigatorio } from "@/lib/telefone";
 import { usuarioTemTermosPendentes } from "@/lib/termos";
 
 export async function GET(request: Request) {
@@ -25,6 +27,11 @@ export async function GET(request: Request) {
   if (await usuarioTemTermosPendentes(sessao.user.id, ["comprador"])) {
     return NextResponse.redirect(
       new URL(criarDestinoAceiteTermos(["comprador"], destinoInteresse, "interesse"), url),
+    );
+  }
+  if (!(await usuarioTemTelefoneObrigatorio(sessao.user.id))) {
+    return NextResponse.redirect(
+      new URL(criarDestinoTelefone(destinoInteresse, "interesse"), url),
     );
   }
 

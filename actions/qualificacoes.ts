@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { getSessao } from "@/lib/auth";
 import { registrarEvento } from "@/lib/log";
 import { createClient } from "@/lib/supabase/server";
+import { criarDestinoTelefone } from "@/lib/auth-redirect";
+import { usuarioTemTelefoneObrigatorio } from "@/lib/telefone";
+import { redirect } from "next/navigation";
 
 export type QualificacaoState = {
   error?: string;
@@ -137,6 +140,9 @@ export async function salvarQualificacaoLead(
 
   const sessao = await getSessao();
   if (!sessao) return { error: "Entre para qualificar seu interesse." };
+  if (!(await usuarioTemTelefoneObrigatorio(sessao.user.id))) {
+    redirect(criarDestinoTelefone(`/painel/negocios/${negocioId}#qualificacao`, "qualificacao"));
+  }
 
   const supabase = await createClient();
   const { data: papelComprador, error: papelError } = await supabase
