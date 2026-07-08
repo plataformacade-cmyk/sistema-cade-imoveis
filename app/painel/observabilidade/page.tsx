@@ -63,6 +63,9 @@ const EVENTOS = [
   "hermes_contexto_negado",
   "hermes_automacao_executada",
   "hermes_alerta_criado",
+  "handoff_humano_criado",
+  "handoff_humano_assumido",
+  "handoff_humano_resultado_registrado",
   "papel_atribuido",
 ];
 

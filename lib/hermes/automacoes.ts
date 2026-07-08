@@ -145,9 +145,36 @@ async function registrarExecucao(
     .select("id")
     .single();
 
-  if (error?.code === "23505") return { criado: false, dryRun: false };
+  if (error?.code === "23505") return { criado: false, dryRun: false, id: null };
   if (error) throw error;
-  return { criado: Boolean(data?.id), dryRun: false };
+  return { criado: Boolean(data?.id), dryRun: false, id: data?.id ?? null };
+}
+
+async function criarHandoffHumanoNegocioTravado(
+  admin: SupabaseAdmin,
+  params: {
+    negocioId: string;
+    automacaoExecucaoId?: string | null;
+    motivo: string;
+    contexto: Record<string, unknown>;
+  },
+) {
+  const { data, error } = await admin
+    .from("negocio_handoffs_humanos")
+    .insert({
+      negocio_id: params.negocioId,
+      automacao_execucao_id: params.automacaoExecucaoId ?? null,
+      origem: "hermes_negocio_travado",
+      motivo: params.motivo,
+      contexto: params.contexto,
+      prioridade: "alta",
+    })
+    .select("id")
+    .single();
+
+  if (error?.code === "23505") return { criado: false, id: null };
+  if (error) throw error;
+  return { criado: Boolean(data?.id), id: data?.id ?? null };
 }
 
 async function jobSuporteTemas(
@@ -236,14 +263,42 @@ async function jobNegociosTravados(
     });
 
     if (execucao.criado && !params.dryRun) {
+      const handoff = await criarHandoffHumanoNegocioTravado(admin, {
+        negocioId: negocio.id,
+        automacaoExecucaoId: execucao.id,
+        motivo: resumo,
+        contexto: {
+          status: negocio.status,
+          tipo: negocio.tipo,
+          atualizado_em: negocio.atualizado_em,
+          local,
+          chave_automacao: chave,
+          followup_sugerido_para: sugeridoPara,
+        },
+      });
       await notificarAdmins(admin, {
-        titulo: "Negocio travado para follow-up",
-        corpo: resumo,
+        titulo: "Handoff comercial criado",
+        corpo: `${resumo} Um operador deve assumir o contato humano.`,
         link: `/painel/negocios/${negocio.id}`,
       });
+      if (handoff.criado) {
+        await registrarEventoAdmin("handoff_humano_criado", {
+          entidadeId: negocio.id,
+          payload: {
+            handoff_id: handoff.id,
+            automacao_execucao_id: execucao.id,
+            origem: "hermes_negocio_travado",
+          },
+        });
+      }
       await registrarEventoAdmin("hermes_alerta_criado", {
         entidadeId: negocio.id,
-        payload: { tipo: "negocio_travado_followup", chave, status: negocio.status },
+        payload: {
+          tipo: "negocio_travado_followup",
+          chave,
+          status: negocio.status,
+          handoff_id: handoff.id,
+        },
       });
     }
 

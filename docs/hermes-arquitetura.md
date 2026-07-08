@@ -206,6 +206,7 @@ Essa rota executa jobs manuais com idempotencia em
 
 - temas recorrentes de suporte nos ultimos 7 dias;
 - negocios travados sem atualizacao ha mais de 3 dias;
+- handoffs humanos em `negocio_handoffs_humanos` para operador/corretor assumir leads travados;
 - comparacao inicial de preco por bairro/tipo/operacao, com alerta para desvio acima de 25%;
 - saude do sistema baseada em contadores operacionais.
 
@@ -216,5 +217,4 @@ Alertas novos geram notificacao interna para admins e logs
 
 - Jobs com cron dedicado e repescagem conversacional.
 - Webhook inbound do WhatsApp, leitura de opt-out por mensagem e envio real apos WABA/templates.
-- Fila de handoff humano/comercial.
 - Social seller/DM Instagram.

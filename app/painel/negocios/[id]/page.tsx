@@ -34,6 +34,7 @@ import { AbrirConversaButton } from "../_components/abrir-conversa-button";
 import { ServicoJuridicoCard } from "../_components/servico-juridico-card";
 import { ContatoExternoCard } from "../_components/contato-externo-card";
 import { FollowupsExternosCard } from "../_components/followups-externos-card";
+import { HandoffsHumanosCard } from "../_components/handoffs-humanos-card";
 import { SuportePosConclusaoCard } from "../_components/suporte-pos-conclusao-card";
 import {
   QualificacaoLeadCard,
@@ -41,6 +42,7 @@ import {
 } from "../_components/qualificacao-lead-card";
 import { carregarEstadoContatoExterno } from "@/lib/contato-externo-server";
 import type { FollowupExternoResumo } from "@/lib/followups-externos";
+import type { HandoffHumanoResumo } from "@/lib/handoffs-humanos";
 import { rotuloPapelNegocio } from "@/lib/negocios/tipo";
 
 type ImovelEmbed = {
@@ -161,6 +163,16 @@ export default async function NegocioDetalhePage({
         .order("prazo_em", { ascending: true })
     : { data: [] };
   const followups = (followupsData ?? []) as unknown as FollowupExternoResumo[];
+  const { data: handoffsData } = podeOperarFollowups
+    ? await supabase
+        .from("negocio_handoffs_humanos")
+        .select(
+          "id, negocio_id, automacao_execucao_id, origem, motivo, contexto, prioridade, status, responsavel_id, assumido_em, resultado, observacao, parar_cadencia, concluido_em, criado_em, atualizado_em",
+        )
+        .eq("negocio_id", negocio.id)
+        .order("criado_em", { ascending: false })
+    : { data: [] };
+  const handoffs = (handoffsData ?? []) as unknown as HandoffHumanoResumo[];
   const { data: qualificacaoData } = await supabase
     .from("negocio_qualificacoes")
     .select(
@@ -291,6 +303,8 @@ export default async function NegocioDetalhePage({
       )}
 
       {podeOperarFollowups && <FollowupsExternosCard followups={followups} />}
+
+      {podeOperarFollowups && <HandoffsHumanosCard handoffs={handoffs} />}
 
       {(podeAbrirSuportePosConclusao ||
         Boolean(sessao?.isAdmin && ticketsPosConclusao.length > 0)) && (

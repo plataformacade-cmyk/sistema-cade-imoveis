@@ -66,6 +66,9 @@ export type Evento =
   | "hermes_alerta_criado"
   | "whatsapp_envio_solicitado"
   | "whatsapp_envio_bloqueado"
+  | "handoff_humano_criado"
+  | "handoff_humano_assumido"
+  | "handoff_humano_resultado_registrado"
   | "comissao_registrada"
   | "erro_nao_capturado";
 

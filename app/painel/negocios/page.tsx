@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { formatBRL, rotuloStatus, variantStatus, enderecoResumido } from "./_lib";
 import { AbrirNegocioDialog } from "./_components/abrir-negocio-dialog";
 import { FollowupsExternosFila } from "./_components/followups-externos-fila";
+import { HandoffsHumanosFila } from "./_components/handoffs-humanos-fila";
 import { rotuloTipoNegocio, sufixoValorAnuncio } from "@/lib/negocios/tipo";
 
 type ImovelEmbed = {
@@ -39,6 +40,21 @@ type FollowupFila = {
   } | null;
 };
 
+type HandoffFila = {
+  id: string;
+  negocio_id: string;
+  origem: string;
+  motivo: string;
+  prioridade: string;
+  status: string;
+  criado_em: string;
+  negocios: {
+    id: string;
+    status: string;
+    imoveis: ImovelEmbed;
+  } | null;
+};
+
 export default async function NegociosPage() {
   const sessao = await getSessao();
   const supabase = await createClient();
@@ -46,7 +62,7 @@ export default async function NegociosPage() {
   const podeVerFilaFollowups =
     Boolean(sessao?.isAdmin) || sessao?.papel === "corretor";
 
-  const [negociosRes, imoveisRes, followupsRes] = await Promise.all([
+  const [negociosRes, imoveisRes, followupsRes, handoffsRes] = await Promise.all([
     supabase
       .from("negocios")
       .select(
@@ -69,11 +85,22 @@ export default async function NegociosPage() {
           .order("prazo_em", { ascending: true })
           .limit(6)
       : Promise.resolve({ data: [] as never[] }),
+    podeVerFilaFollowups
+      ? supabase
+          .from("negocio_handoffs_humanos")
+          .select(
+            "id, negocio_id, origem, motivo, prioridade, status, criado_em, negocios(id, status, imoveis(logradouro, numero, bairro, cidade))",
+          )
+          .in("status", ["aberto", "em_atendimento"])
+          .order("criado_em", { ascending: true })
+          .limit(6)
+      : Promise.resolve({ data: [] as never[] }),
   ]);
 
   const negocios = (negociosRes.data ?? []) as unknown as NegocioLinha[];
   const imoveis = (imoveisRes.data ?? []) as never[];
   const followups = (followupsRes.data ?? []) as unknown as FollowupFila[];
+  const handoffs = (handoffsRes.data ?? []) as unknown as HandoffFila[];
 
   return (
     <div className="flex flex-col gap-6">
@@ -88,6 +115,8 @@ export default async function NegociosPage() {
         </div>
         {podeAbrir && <AbrirNegocioDialog imoveis={imoveis} />}
       </div>
+
+      {podeVerFilaFollowups && <HandoffsHumanosFila handoffs={handoffs} />}
 
       {podeVerFilaFollowups && <FollowupsExternosFila followups={followups} />}
 
