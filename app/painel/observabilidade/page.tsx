@@ -59,6 +59,10 @@ const EVENTOS = [
   "prestador_cartorial_acao",
   "suporte_pos_conclusao_criado",
   "suporte_pos_conclusao_status_mudado",
+  "hermes_contexto_lido",
+  "hermes_contexto_negado",
+  "hermes_automacao_executada",
+  "hermes_alerta_criado",
   "papel_atribuido",
 ];
 

@@ -133,6 +133,44 @@ async function fetchAppContext(contextRequest) {
   }
 }
 
+async function callAppAutomation(body) {
+  if (!cadeAppUrl || !cadeAppContextToken) {
+    return { ok: false, status: 503, erro: "app_context_not_configured" };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const response = await fetch(`${cadeAppUrl}/api/hermes/automacoes`, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${cadeAppContextToken}`,
+      },
+      body: JSON.stringify({
+        job: asText(body?.job, "todos").slice(0, 60) || "todos",
+        dryRun: body?.dryRun === true,
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    return {
+      ok: response.ok && data?.ok !== false,
+      status: response.status,
+      ...data,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 502,
+      erro: error?.name === "AbortError" ? "automation_timeout" : "automation_request_failed",
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function toAnthropicMessages(history, pergunta) {
   const messages = [];
   for (const turn of history.slice(-10)) {
@@ -249,6 +287,20 @@ async function handleSupportRespond(req, res) {
   }
 }
 
+async function handleAutomationsRun(req, res) {
+  if (!isAuthorized(req)) {
+    return json(res, 401, { ok: false, erro: "unauthorized" });
+  }
+
+  try {
+    const body = await readJson(req);
+    const result = await callAppAutomation(body);
+    return json(res, result.ok ? 200 : result.status || 502, result);
+  } catch (error) {
+    return json(res, error?.statusCode || 500, { ok: false, erro: error?.message || "internal_error" });
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
@@ -265,6 +317,10 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "POST" && url.pathname === "/v1/support/respond") {
     return handleSupportRespond(req, res);
+  }
+
+  if (req.method === "POST" && url.pathname === "/v1/automations/run") {
+    return handleAutomationsRun(req, res);
   }
 
   return json(res, 404, { ok: false, erro: "not_found" });

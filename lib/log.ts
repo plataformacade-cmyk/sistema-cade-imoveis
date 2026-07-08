@@ -62,6 +62,8 @@ export type Evento =
   | "suporte_pos_conclusao_status_mudado"
   | "hermes_contexto_lido"
   | "hermes_contexto_negado"
+  | "hermes_automacao_executada"
+  | "hermes_alerta_criado"
   | "comissao_registrada"
   | "erro_nao_capturado";
 

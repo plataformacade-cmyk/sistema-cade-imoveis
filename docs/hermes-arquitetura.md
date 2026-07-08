@@ -103,6 +103,44 @@ Erros esperados:
 - `502 anthropic_error`: erro do provider, sem expor segredo.
 - `503 anthropic_not_configured`: chave ausente no servidor.
 
+### POST `/v1/automations/run`
+
+Executa manualmente a primeira leva de automacoes Hermes. A chamada e
+idempotente no app principal por chave unica diaria/alvo.
+
+Entrada:
+
+```json
+{
+  "job": "todos",
+  "dryRun": false
+}
+```
+
+Jobs aceitos:
+
+- `todos`
+- `suporte_temas`
+- `negocios_travados`
+- `precos_bairro`
+- `saude_sistema`
+
+Saida 200:
+
+```json
+{
+  "ok": true,
+  "job": "todos",
+  "dryRun": false,
+  "resumo": {
+    "total": 4,
+    "novos": 2,
+    "duplicados_ignorados": 2
+  },
+  "resultados": []
+}
+```
+
 ## Integracao com o app
 
 `lib/suporte/agente.ts` deve tentar Hermes quando `HERMES_API_URL` e
@@ -131,10 +169,30 @@ Escopos aceitos:
 O endpoint usa service role apenas no servidor Next.js, nunca no client, e registra
 `hermes_contexto_lido`/`hermes_contexto_negado` em `logs_estruturados`.
 
+## Automacoes Hermes v1
+
+O app principal tambem expoe:
+
+```http
+POST /api/hermes/automacoes
+Authorization: Bearer <HERMES_API_TOKEN>
+Content-Type: application/json
+```
+
+Essa rota executa jobs manuais com idempotencia em
+`hermes_automacoes_execucoes`:
+
+- temas recorrentes de suporte nos ultimos 7 dias;
+- negocios travados sem atualizacao ha mais de 3 dias;
+- comparacao inicial de preco por bairro/tipo/operacao, com alerta para desvio acima de 25%;
+- saude do sistema baseada em contadores operacionais.
+
+Alertas novos geram notificacao interna para admins e logs
+`hermes_automacao_executada`/`hermes_alerta_criado`.
+
 ## Proximas extensoes
 
-- Camada segura de contexto para negocios, visitas, propostas e metricas.
-- Jobs de follow-up e repescagem.
+- Jobs com cron dedicado e repescagem conversacional.
 - Provider WhatsApp.
 - Fila de handoff humano/comercial.
 - Social seller/DM Instagram.
