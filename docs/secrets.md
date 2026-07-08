@@ -39,6 +39,14 @@ Este documento e o inventario canonico de variaveis para a `OPE-208`. Ele nao de
 | `WHATSAPP_ACCESS_TOKEN` | local, Vercel, Hermes server | Futuro | Token Meta Cloud API. Server-only. |
 | `WHATSAPP_GRAPH_API_VERSION` | local, Vercel, Hermes server | Futuro | Default tecnico: `v23.0`, ajustavel por env. |
 | `WHATSAPP_TEST_TO` | local, Vercel, Hermes server | Futuro | Numero controlado para smoke de envio. Nao versionar valor. |
+| `INSTAGRAM_PROVIDER` | local, Vercel, Hermes server | Futuro | Provider planejado: `meta_instagram_messaging`. |
+| `INSTAGRAM_PAGE_ID` | local, Vercel, Hermes server | Futuro | Pagina Facebook vinculada ao Instagram profissional. |
+| `INSTAGRAM_BUSINESS_ACCOUNT_ID` | local, Vercel, Hermes server | Futuro | ID da conta profissional do Instagram. |
+| `INSTAGRAM_ACCESS_TOKEN` | local, Vercel, Hermes server | Futuro | Token Meta para Instagram Messaging. Server-only. |
+| `INSTAGRAM_APP_SECRET` | local, Vercel, Hermes server | Futuro | Usado para validar assinaturas/webhooks quando aplicavel. |
+| `INSTAGRAM_VERIFY_TOKEN` | local, Vercel, Hermes server | Futuro | Token de verificacao do webhook. |
+| `INSTAGRAM_GRAPH_API_VERSION` | local, Vercel, Hermes server | Futuro | Versao Graph API definida para Instagram Messaging. |
+| `INSTAGRAM_TEST_IGSID` | local, Vercel, Hermes server | Futuro | Usuario de teste controlado para smoke de DM. |
 | `NEXT_PUBLIC_SENTRY_DSN` | local, Vercel | Planejado | Publica por natureza, mas sem implementacao runtime hoje. |
 | `RESEND_API_KEY` | local, Vercel | Planejado | E-mail transacional ainda nao implementado. |
 

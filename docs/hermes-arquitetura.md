@@ -217,4 +217,4 @@ Alertas novos geram notificacao interna para admins e logs
 
 - Jobs com cron dedicado e repescagem conversacional.
 - Webhook inbound do WhatsApp, leitura de opt-out por mensagem e envio real apos WABA/templates.
-- Social seller/DM Instagram.
+- Social seller/DM Instagram conforme `docs/social-seller-instagram-hermes.md`, depois de credenciais Meta.

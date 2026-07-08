@@ -42,6 +42,19 @@ const groups = [
       "WHATSAPP_TEST_TO",
     ],
   },
+  {
+    name: "instagram-futuro",
+    optional: [
+      "INSTAGRAM_PROVIDER",
+      "INSTAGRAM_PAGE_ID",
+      "INSTAGRAM_BUSINESS_ACCOUNT_ID",
+      "INSTAGRAM_ACCESS_TOKEN",
+      "INSTAGRAM_APP_SECRET",
+      "INSTAGRAM_VERIFY_TOKEN",
+      "INSTAGRAM_GRAPH_API_VERSION",
+      "INSTAGRAM_TEST_IGSID",
+    ],
+  },
 ];
 
 function parseEnv(path) {
