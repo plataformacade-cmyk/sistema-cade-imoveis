@@ -18,17 +18,39 @@ const JOBS = new Set<JobAutomacaoHermes>([
   "saude_sistema",
 ]);
 
-function montarPayload(body: unknown) {
+type PayloadValido = {
+  ok: true;
+  payload: { job: JobAutomacaoHermes; dryRun: boolean };
+};
+
+type PayloadInvalido = {
+  ok: false;
+  erro: "json_invalido" | "payload_invalido" | "job_invalido";
+};
+
+async function montarPayload(request: Request): Promise<PayloadValido | PayloadInvalido> {
+  let body: unknown;
+  try {
+    const texto = await request.text();
+    if (!texto.trim()) return { ok: false, erro: "payload_invalido" };
+    body = JSON.parse(texto);
+  } catch {
+    return { ok: false, erro: "json_invalido" };
+  }
+
   if (!body || typeof body !== "object" || Array.isArray(body)) {
-    return { job: "todos" as JobAutomacaoHermes, dryRun: false };
+    return { ok: false, erro: "payload_invalido" };
   }
   const record = body as Record<string, unknown>;
-  const job = typeof record.job === "string" && JOBS.has(record.job as JobAutomacaoHermes)
-    ? (record.job as JobAutomacaoHermes)
-    : "todos";
+  if (typeof record.job !== "string" || !JOBS.has(record.job as JobAutomacaoHermes)) {
+    return { ok: false, erro: "job_invalido" };
+  }
   return {
-    job,
-    dryRun: record.dryRun === true,
+    ok: true,
+    payload: {
+      job: record.job as JobAutomacaoHermes,
+      dryRun: record.dryRun === true,
+    },
   };
 }
 
@@ -41,8 +63,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, erro: "unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json().catch(() => ({}));
-  const payload = montarPayload(body);
+  const resultadoPayload = await montarPayload(request);
+  if (!resultadoPayload.ok) {
+    await registrarEventoAdmin("hermes_automacao_executada", {
+      severidade: "warn",
+      payload: { erro: resultadoPayload.erro },
+    });
+    return NextResponse.json(
+      { ok: false, erro: resultadoPayload.erro },
+      { status: 400, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  const payload = resultadoPayload.payload;
   try {
     const resultado = await executarAutomacoesHermes(payload);
     return NextResponse.json(resultado, { headers: { "Cache-Control": "no-store" } });
