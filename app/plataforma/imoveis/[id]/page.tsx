@@ -15,7 +15,7 @@ import { BotaoInteresse } from "./_components/botao-interesse";
 import { AcoesImovel } from "./_components/acoes-imovel";
 import { EngajamentoTracker } from "./_components/engajamento-tracker";
 import { ImovelCard, type ImovelCardData } from "@/components/publico/imovel-card";
-import { infoDoBairro } from "./_bairros";
+import { infoDoBairroEnriquecida } from "./_bairros";
 import { SITE, imovelLd, breadcrumbLd, slugBairro } from "@/lib/seo";
 import { getSessao } from "@/lib/auth";
 import {
@@ -103,7 +103,11 @@ export default async function ImovelDetalhePage({
     ? [ruaNumero, imovel.bairro, cidadeUf].filter(Boolean).join(", ")
     : [imovel.bairro, cidadeUf].filter(Boolean).join(", ");
   const comodidades = extrairComodidades(imovel.caracteristicas);
-  const bairroInfo = infoDoBairro(imovel.bairro);
+  const bairroInfo = await infoDoBairroEnriquecida({
+    bairro: imovel.bairro,
+    cidade: imovel.cidade,
+    uf: imovel.uf,
+  });
 
   const relacionados: ImovelCardData[] = [];
   const vistos = new Set<string>([imovel.id]);

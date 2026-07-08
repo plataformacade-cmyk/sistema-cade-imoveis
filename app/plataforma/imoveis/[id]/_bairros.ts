@@ -3,6 +3,8 @@
 // Google Places configurada. As distâncias são aproximadas por região/bairro,
 // não pelo endereço exato do imóvel, preservando a privacidade pública.
 
+import "server-only";
+
 export type PontoBairro = {
   nome: string;
   categoria: string;
@@ -14,7 +16,85 @@ export type InfoBairro = {
   descricao: string;
   destaques: string[];
   pontos: PontoBairro[];
+  fonte?: "curadoria" | "google_places";
 };
+
+type PlaceSearchResponse = {
+  places?: {
+    displayName?: { text?: string };
+    primaryTypeDisplayName?: { text?: string };
+  }[];
+};
+
+const GOOGLE_PLACE_QUERIES = [
+  { termo: "supermercado", tipo: "supermarket", categoria: "Mercado" },
+  { termo: "farmacia", tipo: "pharmacy", categoria: "Farmacia" },
+  { termo: "escola", tipo: "school", categoria: "Educacao" },
+  { termo: "hospital", tipo: "hospital", categoria: "Saude" },
+  { termo: "shopping", tipo: "shopping_mall", categoria: "Comercio" },
+  { termo: "faculdade", tipo: "university", categoria: "Educacao" },
+];
+
+function googlePlacesKey() {
+  return (
+    process.env.GOOGLE_PLACES_API_KEY ||
+    process.env.GOOGLE_MAPS_API_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    null
+  );
+}
+
+async function buscarPontosGooglePlaces(params: {
+  bairro: string | null;
+  cidade: string | null;
+  uf?: string | null;
+}): Promise<PontoBairro[]> {
+  const key = googlePlacesKey();
+  if (!key || !params.bairro || !params.cidade) return [];
+
+  const local = [params.bairro, params.cidade, params.uf]
+    .filter(Boolean)
+    .join(", ");
+  const encontrados: PontoBairro[] = [];
+  const nomes = new Set<string>();
+
+  for (const query of GOOGLE_PLACE_QUERIES) {
+    try {
+      const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": key,
+          "X-Goog-FieldMask": "places.displayName,places.primaryTypeDisplayName",
+        },
+        body: JSON.stringify({
+          textQuery: `${query.termo} em ${local}`,
+          includedType: query.tipo,
+          languageCode: "pt-BR",
+          regionCode: "BR",
+        }),
+        cache: "no-store",
+      });
+      if (!res.ok) continue;
+      const json = (await res.json()) as PlaceSearchResponse;
+      const place = json.places?.find((item) => item.displayName?.text);
+      const nome = place?.displayName?.text?.trim();
+      if (!place || !nome || nomes.has(nome)) continue;
+      nomes.add(nome);
+      encontrados.push({
+        nome,
+        categoria: place.primaryTypeDisplayName?.text ?? query.categoria,
+        distancia: "proximo ao bairro",
+        tempo: "confira rota no mapa",
+      });
+      if (encontrados.length >= 3) break;
+    } catch {
+      continue;
+    }
+  }
+
+  return encontrados;
+}
 
 const BAIRROS: Record<string, InfoBairro> = {
   Centro: {
@@ -145,5 +225,27 @@ export function infoDoBairro(bairro: string | null): InfoBairro {
       "Bairro de Uberlândia com boa oferta de imóveis. Demonstre interesse para conhecer mais sobre a região direto com o anunciante.",
     destaques: ["Em Uberlândia/MG"],
     pontos: [],
+  };
+}
+
+export async function infoDoBairroEnriquecida(params: {
+  bairro: string | null;
+  cidade: string | null;
+  uf?: string | null;
+}): Promise<InfoBairro> {
+  const fallback = infoDoBairro(params.bairro);
+  const pontosGoogle = await buscarPontosGooglePlaces(params);
+
+  if (pontosGoogle.length === 0) {
+    return { ...fallback, fonte: "curadoria" };
+  }
+
+  return {
+    ...fallback,
+    pontos: pontosGoogle,
+    destaques: Array.from(
+      new Set([...fallback.destaques, "Dados atualizados por regiao"]),
+    ).slice(0, 4),
+    fonte: "google_places",
   };
 }
