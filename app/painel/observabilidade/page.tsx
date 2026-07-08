@@ -33,6 +33,7 @@ const EVENTOS = [
   "proposta_enviada",
   "proposta_respondida",
   "mensagem_contato_bloqueado",
+  "contato_externo_reincidente",
   "servico_juridico_contratado",
   "servico_juridico_status_mudado",
   "contato_externo_aceito",

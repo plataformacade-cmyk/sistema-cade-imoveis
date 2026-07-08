@@ -27,6 +27,7 @@ export type Evento =
   | "lead_qualificacao_notificada"
   | "mensagem_enviada"
   | "mensagem_contato_bloqueado"
+  | "contato_externo_reincidente"
   | "proposta_enviada"
   | "proposta_respondida"
   | "documento_enviado"
