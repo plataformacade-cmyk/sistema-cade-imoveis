@@ -171,6 +171,47 @@ async function callAppAutomation(body) {
   }
 }
 
+async function callAppWhatsapp(body) {
+  if (!cadeAppUrl || !cadeAppContextToken) {
+    return { ok: false, status: 503, erro: "app_context_not_configured" };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20_000);
+  try {
+    const response = await fetch(`${cadeAppUrl}/api/hermes/whatsapp/enviar`, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${cadeAppContextToken}`,
+      },
+      body: JSON.stringify({
+        template: asText(body?.template),
+        usuarioId: asText(body?.usuarioId) || undefined,
+        telefone: asText(body?.telefone) || undefined,
+        variaveis: Array.isArray(body?.variaveis) ? body.variaveis : undefined,
+        dryRun: body?.dryRun === true,
+        teste: body?.teste === true,
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    return {
+      ok: response.ok && data?.ok !== false,
+      status: response.status,
+      ...data,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 502,
+      erro: error?.name === "AbortError" ? "whatsapp_timeout" : "whatsapp_request_failed",
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function toAnthropicMessages(history, pergunta) {
   const messages = [];
   for (const turn of history.slice(-10)) {
@@ -301,6 +342,20 @@ async function handleAutomationsRun(req, res) {
   }
 }
 
+async function handleWhatsappSend(req, res) {
+  if (!isAuthorized(req)) {
+    return json(res, 401, { ok: false, erro: "unauthorized" });
+  }
+
+  try {
+    const body = await readJson(req);
+    const result = await callAppWhatsapp(body);
+    return json(res, result.ok ? 200 : result.status || 502, result);
+  } catch (error) {
+    return json(res, error?.statusCode || 500, { ok: false, erro: error?.message || "internal_error" });
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
@@ -321,6 +376,10 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "POST" && url.pathname === "/v1/automations/run") {
     return handleAutomationsRun(req, res);
+  }
+
+  if (req.method === "POST" && url.pathname === "/v1/whatsapp/send") {
+    return handleWhatsappSend(req, res);
   }
 
   return json(res, 404, { ok: false, erro: "not_found" });

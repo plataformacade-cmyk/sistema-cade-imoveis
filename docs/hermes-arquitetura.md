@@ -117,6 +117,28 @@ Entrada:
 }
 ```
 
+### POST `/v1/whatsapp/send`
+
+Encaminha uma solicitacao de WhatsApp para o app principal, que valida
+consentimento/opt-out, registra auditoria e usa Meta Cloud API quando as
+credenciais estiverem configuradas.
+
+Entrada:
+
+```json
+{
+  "template": "cade_suporte_humano",
+  "usuarioId": "00000000-0000-4000-8000-000000000000",
+  "telefone": "+5534999999999",
+  "variaveis": ["Nome", "Resumo"],
+  "dryRun": true,
+  "teste": true
+}
+```
+
+Sem `WHATSAPP_PHONE_NUMBER_ID` e `WHATSAPP_ACCESS_TOKEN`, a resposta esperada e
+`provider_not_configured`, sem tentar envio real.
+
 Jobs aceitos:
 
 - `todos`
@@ -193,6 +215,6 @@ Alertas novos geram notificacao interna para admins e logs
 ## Proximas extensoes
 
 - Jobs com cron dedicado e repescagem conversacional.
-- Provider WhatsApp.
+- Webhook inbound do WhatsApp, leitura de opt-out por mensagem e envio real apos WABA/templates.
 - Fila de handoff humano/comercial.
 - Social seller/DM Instagram.

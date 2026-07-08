@@ -32,6 +32,16 @@ const groups = [
     name: "marketing-futuro",
     optional: ["PERPLEXITY_API_KEY", "HIGGSFIELD_API_KEY"],
   },
+  {
+    name: "whatsapp-futuro",
+    optional: [
+      "WHATSAPP_PROVIDER",
+      "WHATSAPP_PHONE_NUMBER_ID",
+      "WHATSAPP_ACCESS_TOKEN",
+      "WHATSAPP_GRAPH_API_VERSION",
+      "WHATSAPP_TEST_TO",
+    ],
+  },
 ];
 
 function parseEnv(path) {

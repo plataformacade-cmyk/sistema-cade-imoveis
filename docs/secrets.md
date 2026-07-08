@@ -34,6 +34,11 @@ Este documento e o inventario canonico de variaveis para a `OPE-208`. Ele nao de
 | `HERMES_API_TOKEN` | Supabase Vault, local, Vercel, Hermes server | Sim para Hermes | Token service-to-service para Hermes. |
 | `PERPLEXITY_API_KEY` | local, GitHub Actions/Hermes | Futuro | Entra quando `OPE-240` migrar pesquisa do agente. |
 | `HIGGSFIELD_API_KEY` | local, GitHub Actions/Hermes | Futuro | Entra quando `OPE-240` migrar imagens. |
+| `WHATSAPP_PROVIDER` | local, Vercel, Hermes server | Futuro | Provider escolhido: `meta_cloud`. Sem provider configurado, rota retorna falha controlada. |
+| `WHATSAPP_PHONE_NUMBER_ID` | local, Vercel, Hermes server | Futuro | ID do numero no WhatsApp Cloud API. Server-only. |
+| `WHATSAPP_ACCESS_TOKEN` | local, Vercel, Hermes server | Futuro | Token Meta Cloud API. Server-only. |
+| `WHATSAPP_GRAPH_API_VERSION` | local, Vercel, Hermes server | Futuro | Default tecnico: `v23.0`, ajustavel por env. |
+| `WHATSAPP_TEST_TO` | local, Vercel, Hermes server | Futuro | Numero controlado para smoke de envio. Nao versionar valor. |
 | `NEXT_PUBLIC_SENTRY_DSN` | local, Vercel | Planejado | Publica por natureza, mas sem implementacao runtime hoje. |
 | `RESEND_API_KEY` | local, Vercel | Planejado | E-mail transacional ainda nao implementado. |
 

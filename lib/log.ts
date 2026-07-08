@@ -64,6 +64,8 @@ export type Evento =
   | "hermes_contexto_negado"
   | "hermes_automacao_executada"
   | "hermes_alerta_criado"
+  | "whatsapp_envio_solicitado"
+  | "whatsapp_envio_bloqueado"
   | "comissao_registrada"
   | "erro_nao_capturado";
 
