@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // Eventos canônicos do Cadê (logs_estruturados).
 export type Evento =
@@ -59,6 +60,8 @@ export type Evento =
   | "prestador_cartorial_acao"
   | "suporte_pos_conclusao_criado"
   | "suporte_pos_conclusao_status_mudado"
+  | "hermes_contexto_lido"
+  | "hermes_contexto_negado"
   | "comissao_registrada"
   | "erro_nao_capturado";
 
@@ -87,5 +90,20 @@ export async function registrarEvento(evento: Evento, opts: Opts = {}) {
     });
   } catch {
     // silencioso de propósito
+  }
+}
+
+export async function registrarEventoAdmin(evento: Evento, opts: Opts = {}) {
+  try {
+    const supabase = createAdminClient();
+    await supabase.from("logs_estruturados").insert({
+      evento,
+      severidade: opts.severidade ?? "info",
+      usuario_id: null,
+      entidade_id: opts.entidadeId ?? null,
+      payload: opts.payload ?? {},
+    });
+  } catch {
+    // silencioso de proposito
   }
 }

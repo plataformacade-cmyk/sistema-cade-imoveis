@@ -5,6 +5,8 @@ const startedAt = new Date().toISOString();
 const port = Number(process.env.PORT || 8787);
 const host = process.env.HOST || "127.0.0.1";
 const serviceToken = process.env.HERMES_API_TOKEN || "";
+const cadeAppUrl = (process.env.CADE_APP_URL || "").replace(/\/+$/, "");
+const cadeAppContextToken = process.env.CADE_APP_CONTEXT_TOKEN || serviceToken;
 const anthropicKey = process.env.ANTHROPIC_API_KEY || "";
 const anthropicModel = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
 const anthropicVersion = process.env.ANTHROPIC_VERSION || "2023-06-01";
@@ -76,6 +78,59 @@ function asHistory(value) {
       corpo: asText(turn?.corpo).slice(0, 4000),
     }))
     .filter((turn) => turn.corpo);
+}
+
+function asContextRequest(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const escopo = asText(value.escopo).slice(0, 40);
+  if (!["sistema", "imovel", "metricas_imovel", "negocio", "suporte"].includes(escopo)) {
+    return null;
+  }
+  const request = { escopo };
+  const id = asText(value.id).slice(0, 80);
+  if (id) request.id = id;
+  const limiteMensagens = Number(value.limiteMensagens);
+  if (Number.isFinite(limiteMensagens)) {
+    request.limiteMensagens = Math.min(Math.max(Math.trunc(limiteMensagens), 1), 30);
+  }
+  return request;
+}
+
+async function fetchAppContext(contextRequest) {
+  if (!contextRequest || !cadeAppUrl || !cadeAppContextToken) return null;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(`${cadeAppUrl}/api/hermes/contexto`, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${cadeAppContextToken}`,
+      },
+      body: JSON.stringify(contextRequest),
+    });
+
+    if (!response.ok) {
+      console.warn("[hermes] contexto indisponivel", {
+        escopo: contextRequest.escopo,
+        status: response.status,
+      });
+      return null;
+    }
+
+    const data = await response.json();
+    return data?.ok ? data.contexto ?? null : null;
+  } catch (error) {
+    console.warn("[hermes] contexto falhou", {
+      escopo: contextRequest.escopo,
+      name: error?.name || "unknown",
+    });
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function toAnthropicMessages(history, pergunta) {
@@ -177,8 +232,13 @@ async function handleSupportRespond(req, res) {
       return json(res, 400, { ok: false, erro: "missing_required_fields" });
     }
 
+    const contexto = await fetchAppContext(asContextRequest(body?.contexto));
+    const systemPromptComContexto = contexto
+      ? `${systemPrompt}\n\nContexto operacional seguro do Cadê Imóveis:\n${JSON.stringify(contexto).slice(0, 12000)}`
+      : systemPrompt;
+
     const result = await callAnthropic({
-      systemPrompt,
+      systemPrompt: systemPromptComContexto,
       history: asHistory(body?.historico),
       pergunta,
     });

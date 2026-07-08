@@ -103,6 +103,10 @@ export async function POST(request: Request) {
     }
     conversaId = data.id;
   }
+  const conversaIdAtual = conversaId;
+  if (!conversaIdAtual) {
+    return NextResponse.json({ erro: "Nao foi possivel abrir a conversa." }, { status: 500 });
+  }
 
   // Registra a fala do usuário.
   await supabase.from("suporte_mensagens").insert({
@@ -121,7 +125,13 @@ export async function POST(request: Request) {
     .limit(20);
   const historico: TurnoChat[] = (hist as TurnoChat[]) ?? [];
 
-  const r = (await responderBuscaImoveis(mensagem)) ?? (await responder(papel, historico, mensagem));
+  const r =
+    (await responderBuscaImoveis(mensagem)) ??
+    (await responder(papel, historico, mensagem, {
+      escopo: "suporte",
+      id: conversaIdAtual,
+      limiteMensagens: 20,
+    }));
 
   // Registra a resposta do assistente.
   await supabase.from("suporte_mensagens").insert({

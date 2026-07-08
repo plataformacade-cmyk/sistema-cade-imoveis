@@ -23,6 +23,8 @@ Valores reais nao devem ser versionados nem escritos em docs.
 - `ANTHROPIC_MODEL`: modelo padrao. Atual: `claude-sonnet-5`.
 - `HERMES_API_TOKEN`: token Bearer entre app principal e Hermes.
 - `HERMES_API_URL`: URL base HTTPS consumida pelo app principal.
+- `CADE_APP_URL`: URL base HTTPS do app principal, usada pelo Hermes para buscar contexto.
+- `CADE_APP_CONTEXT_TOKEN`: token Bearer opcional para contexto; se ausente, o Hermes usa `HERMES_API_TOKEN`.
 
 Copias operacionais ficam no Supabase Vault e no arquivo `/etc/hermes/hermes.env`
 do servidor. O app Next.js deve receber somente `HERMES_API_URL` e
@@ -69,7 +71,12 @@ Entrada:
     { "autor": "usuario", "corpo": "Oi" },
     { "autor": "assistente", "corpo": "Como posso ajudar?" }
   ],
-  "systemPrompt": "prompt server-side montado pelo app principal"
+  "systemPrompt": "prompt server-side montado pelo app principal",
+  "contexto": {
+    "escopo": "suporte",
+    "id": "00000000-0000-4000-8000-000000000000",
+    "limiteMensagens": 20
+  }
 }
 ```
 
@@ -102,6 +109,27 @@ Erros esperados:
 `HERMES_API_TOKEN` estiverem presentes. Se Hermes falhar, o app mantem fallback
 para OpenAI e, em ultimo caso, FAQ local. A indisponibilidade do Hermes nao pode
 derrubar o widget de suporte.
+
+## Camada segura de contexto
+
+O app principal expoe apenas um endpoint interno para o Hermes:
+
+```http
+POST /api/hermes/contexto
+Authorization: Bearer <HERMES_API_TOKEN>
+Content-Type: application/json
+```
+
+Escopos aceitos:
+
+- `sistema`: contadores operacionais agregados, sem dados pessoais.
+- `imovel`: dados publicos/operacionais do imovel, sem logradouro, numero, complemento, CEP ou coordenadas.
+- `metricas_imovel`: metricas agregadas 7/30 dias, sem eventos brutos ou identificacao de visitante.
+- `negocio`: estado do negocio, visitas, propostas, qualificacao resumida e mensagens mascaradas.
+- `suporte`: conversa de suporte e mensagens recentes, com contatos mascarados.
+
+O endpoint usa service role apenas no servidor Next.js, nunca no client, e registra
+`hermes_contexto_lido`/`hermes_contexto_negado` em `logs_estruturados`.
 
 ## Proximas extensoes
 

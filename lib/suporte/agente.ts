@@ -12,6 +12,12 @@ export type RespostaAgente = {
   modo: "hermes" | "ia" | "basico" | "consultor";
 };
 
+export type PedidoContextoHermes = {
+  escopo: "sistema" | "imovel" | "metricas_imovel" | "negocio" | "suporte";
+  id?: string;
+  limiteMensagens?: number;
+};
+
 const MODELO = process.env.OPENAI_MODELO_SUPORTE || "gpt-4o-mini";
 const HERMES_TIMEOUT_MS = 18_000;
 
@@ -54,6 +60,7 @@ async function responderHermes(
   papel: Papel | "visitante",
   historico: TurnoChat[],
   pergunta: string,
+  contexto?: PedidoContextoHermes,
 ): Promise<RespostaAgente | null> {
   const baseUrl = limparEnvPrivada(process.env.HERMES_API_URL)?.replace(/\/+$/, "");
   const token = limparEnvPrivada(process.env.HERMES_API_TOKEN);
@@ -80,6 +87,7 @@ async function responderHermes(
         historico: historico.slice(-10),
         pergunta,
         systemPrompt: systemPrompt(papel),
+        contexto,
       }),
     }).finally(() => clearTimeout(timer));
 
@@ -117,8 +125,9 @@ export async function responder(
   papel: Papel | "visitante",
   historico: TurnoChat[],
   pergunta: string,
+  contexto?: PedidoContextoHermes,
 ): Promise<RespostaAgente> {
-  const respostaHermes = await responderHermes(papel, historico, pergunta);
+  const respostaHermes = await responderHermes(papel, historico, pergunta, contexto);
   if (respostaHermes) return respostaHermes;
 
   const chave = process.env.OPENAI_API_KEY;
