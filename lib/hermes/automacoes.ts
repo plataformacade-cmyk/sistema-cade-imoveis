@@ -8,6 +8,7 @@ export type JobAutomacaoHermes =
   | "todos"
   | "suporte_temas"
   | "negocios_travados"
+  | "repescagem_leads"
   | "precos_bairro"
   | "saude_sistema";
 
@@ -35,6 +36,7 @@ function primeiroEmbed<T>(valor: T | T[] | null | undefined) {
 const JOBS: JobAutomacaoHermes[] = [
   "suporte_temas",
   "negocios_travados",
+  "repescagem_leads",
   "precos_bairro",
   "saude_sistema",
 ];
@@ -121,6 +123,7 @@ async function registrarExecucao(
     tipo:
       | "suporte_tema_recorrente"
       | "negocio_travado_followup"
+      | "lead_repescagem_followup"
       | "preco_bairro_alerta"
       | "saude_sistema_alerta"
       | "job_manual";
@@ -168,6 +171,33 @@ async function criarHandoffHumanoNegocioTravado(
       motivo: params.motivo,
       contexto: params.contexto,
       prioridade: "alta",
+    })
+    .select("id")
+    .single();
+
+  if (error?.code === "23505") return { criado: false, id: null };
+  if (error) throw error;
+  return { criado: Boolean(data?.id), id: data?.id ?? null };
+}
+
+async function criarHandoffHumanoRepescagem(
+  admin: SupabaseAdmin,
+  params: {
+    negocioId: string;
+    automacaoExecucaoId?: string | null;
+    motivo: string;
+    contexto: Record<string, unknown>;
+  },
+) {
+  const { data, error } = await admin
+    .from("negocio_handoffs_humanos")
+    .insert({
+      negocio_id: params.negocioId,
+      automacao_execucao_id: params.automacaoExecucaoId ?? null,
+      origem: "hermes_repescagem",
+      motivo: params.motivo,
+      contexto: params.contexto,
+      prioridade: "normal",
     })
     .select("id")
     .single();
@@ -316,6 +346,189 @@ type ImovelPreco = {
   valor_anuncio: number | null;
 };
 
+type RepescagemRow = {
+  id: string;
+  negocio_id: string;
+  comprador_id: string | null;
+  motivo_perda: string | null;
+  status: string;
+  tentativas: number;
+  proxima_tentativa_em: string | null;
+  negocios: {
+    id: string;
+    status: string;
+    tipo: string | null;
+    imovel_id: string | null;
+    imoveis: {
+      id: string;
+      bairro: string | null;
+      cidade: string | null;
+      tipo: string | null;
+      tipo_negocio: string | null;
+      valor_anuncio: number | null;
+    } | null;
+  } | null;
+};
+
+type ImovelSimilar = {
+  id: string;
+  titulo: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  tipo: string | null;
+  tipo_negocio: string | null;
+  valor_anuncio: number | null;
+};
+
+async function buscarImoveisSimilares(
+  admin: SupabaseAdmin,
+  imovel: NonNullable<NonNullable<RepescagemRow["negocios"]>["imoveis"]>,
+) {
+  let query = admin
+    .from("imoveis")
+    .select("id, titulo, bairro, cidade, tipo, tipo_negocio, valor_anuncio")
+    .eq("status", "ativo")
+    .neq("id", imovel.id)
+    .limit(12);
+
+  if (imovel.tipo_negocio) query = query.eq("tipo_negocio", imovel.tipo_negocio);
+  if (imovel.tipo) query = query.eq("tipo", imovel.tipo);
+  if (imovel.cidade) query = query.eq("cidade", imovel.cidade);
+
+  const { data } = await query;
+  const candidatos = ((data ?? []) as ImovelSimilar[]).sort((a, b) => {
+    const bairroA = a.bairro && imovel.bairro && normalizar(a.bairro) === normalizar(imovel.bairro) ? 0 : 1;
+    const bairroB = b.bairro && imovel.bairro && normalizar(b.bairro) === normalizar(imovel.bairro) ? 0 : 1;
+    if (bairroA !== bairroB) return bairroA - bairroB;
+    const valorBase = Number(imovel.valor_anuncio ?? 0);
+    if (!valorBase) return 0;
+    return (
+      Math.abs(Number(a.valor_anuncio ?? 0) - valorBase) -
+      Math.abs(Number(b.valor_anuncio ?? 0) - valorBase)
+    );
+  });
+  return candidatos.slice(0, 4);
+}
+
+async function jobRepescagemLeads(
+  admin: SupabaseAdmin,
+  params: { dia: string; dryRun: boolean; agora: Date },
+) {
+  const { data } = await admin
+    .from("negocio_repescagens")
+    .select(
+      "id, negocio_id, comprador_id, motivo_perda, status, tentativas, proxima_tentativa_em, negocios(id, status, tipo, imovel_id, imoveis(id, bairro, cidade, tipo, tipo_negocio, valor_anuncio))",
+    )
+    .in("status", ["pendente", "em_cadencia", "respondido"])
+    .eq("parar_cadencia", false)
+    .or(`proxima_tentativa_em.is.null,proxima_tentativa_em.lte.${params.agora.toISOString()}`)
+    .limit(30);
+
+  const resultados: ResultadoItem[] = [];
+  for (const row of ((data ?? []) as unknown as RepescagemRow[])) {
+    const negocio = row.negocios;
+    const imovel = primeiroEmbed(negocio?.imoveis ?? null);
+    if (!negocio || !imovel || negocio.status !== "perdido") continue;
+
+    const proximaTentativa = Number(row.tentativas ?? 0) + 1;
+    const chave = `lead-repescagem:${params.dia}:${row.id}:${proximaTentativa}`;
+    const similares = await buscarImoveisSimilares(admin, imovel);
+    const local = [imovel.bairro, imovel.cidade].filter(Boolean).join(", ");
+    const resumo =
+      similares.length > 0
+        ? `Repescagem do lead com ${similares.length} imovel(is) similar(es)${local ? ` em ${local}` : ""}.`
+        : `Repescagem sem imovel similar suficiente${local ? ` para ${local}` : ""}.`;
+
+    const execucao = await registrarExecucao(admin, {
+      dryRun: params.dryRun,
+      chave,
+      tipo: "lead_repescagem_followup",
+      alvoTipo: "negocio",
+      alvoId: row.negocio_id,
+      resumo,
+      payload: {
+        repescagem_id: row.id,
+        tentativa: proximaTentativa,
+        similares: similares.map((item) => item.id),
+        motivo_perda: row.motivo_perda,
+      },
+    });
+
+    if (execucao.criado && !params.dryRun) {
+      const deveEncerrar = proximaTentativa >= 3 && similares.length === 0;
+      const deveHandoff = proximaTentativa >= 3 || similares.length === 0;
+      const prox =
+        deveEncerrar
+          ? null
+          : new Date(params.agora.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString();
+
+      await admin
+        .from("negocio_repescagens")
+        .update({
+          status: deveEncerrar ? "encerrado" : "em_cadencia",
+          tentativas: proximaTentativa,
+          ultima_tentativa_em: params.agora.toISOString(),
+          proxima_tentativa_em: prox,
+          imoveis_recomendados: similares,
+          automacao_execucao_id: execucao.id ?? null,
+          encerrado_em: deveEncerrar ? params.agora.toISOString() : null,
+        })
+        .eq("id", row.id);
+
+      if (row.comprador_id && similares.length > 0) {
+        await admin.from("notificacoes").insert({
+          usuario_id: row.comprador_id,
+          tipo: "sistema",
+          titulo: "Encontramos imoveis similares",
+          corpo: "Selecionamos opcoes parecidas com o imovel anterior. Veja se alguma ainda faz sentido.",
+          link: `/painel/negocios/${row.negocio_id}`,
+        });
+      }
+
+      if (deveHandoff) {
+        const handoff = await criarHandoffHumanoRepescagem(admin, {
+          negocioId: row.negocio_id,
+          automacaoExecucaoId: execucao.id,
+          motivo:
+            similares.length === 0
+              ? "Repescagem sem imovel similar suficiente. Operador deve avaliar alternativas."
+              : "Repescagem atingiu limite automatico. Operador deve assumir proximo contato.",
+          contexto: {
+            repescagem_id: row.id,
+            tentativa: proximaTentativa,
+            similares: similares.map((item) => item.id),
+            motivo_perda: row.motivo_perda,
+          },
+        });
+        if (handoff.criado) {
+          await registrarEventoAdmin("handoff_humano_criado", {
+            entidadeId: row.negocio_id,
+            payload: {
+              handoff_id: handoff.id,
+              origem: "hermes_repescagem",
+              repescagem_id: row.id,
+            },
+          });
+        }
+      }
+
+      await registrarEventoAdmin(deveEncerrar ? "lead_repescagem_encerrada" : "lead_repescagem_followup", {
+        entidadeId: row.negocio_id,
+        payload: {
+          repescagem_id: row.id,
+          tentativa: proximaTentativa,
+          similares: similares.map((item) => item.id),
+          encerrada: deveEncerrar,
+        },
+      });
+    }
+
+    resultados.push({ job: "repescagem_leads", chave, criado: execucao.criado, resumo });
+  }
+
+  return resultados;
+}
+
 async function jobPrecosBairro(
   admin: SupabaseAdmin,
   params: { dia: string; dryRun: boolean },
@@ -461,6 +674,8 @@ export async function executarAutomacoesHermes(params: ExecucaoParams = {}) {
       resultados.push(...(await jobSuporteTemas(admin, { dia, dryRun, agora })));
     } else if (item === "negocios_travados") {
       resultados.push(...(await jobNegociosTravados(admin, { dia, dryRun, agora })));
+    } else if (item === "repescagem_leads") {
+      resultados.push(...(await jobRepescagemLeads(admin, { dia, dryRun, agora })));
     } else if (item === "precos_bairro") {
       resultados.push(...(await jobPrecosBairro(admin, { dia, dryRun })));
     } else if (item === "saude_sistema") {

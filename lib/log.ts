@@ -69,6 +69,10 @@ export type Evento =
   | "handoff_humano_criado"
   | "handoff_humano_assumido"
   | "handoff_humano_resultado_registrado"
+  | "lead_repescagem_criada"
+  | "lead_repescagem_followup"
+  | "lead_repescagem_resposta_registrada"
+  | "lead_repescagem_encerrada"
   | "comissao_registrada"
   | "erro_nao_capturado";
 

@@ -35,6 +35,7 @@ import { ServicoJuridicoCard } from "../_components/servico-juridico-card";
 import { ContatoExternoCard } from "../_components/contato-externo-card";
 import { FollowupsExternosCard } from "../_components/followups-externos-card";
 import { HandoffsHumanosCard } from "../_components/handoffs-humanos-card";
+import { RepescagemLeadCard } from "../_components/repescagem-lead-card";
 import { SuportePosConclusaoCard } from "../_components/suporte-pos-conclusao-card";
 import {
   QualificacaoLeadCard,
@@ -43,6 +44,7 @@ import {
 import { carregarEstadoContatoExterno } from "@/lib/contato-externo-server";
 import type { FollowupExternoResumo } from "@/lib/followups-externos";
 import type { HandoffHumanoResumo } from "@/lib/handoffs-humanos";
+import type { RepescagemResumo } from "@/lib/repescagens";
 import { rotuloPapelNegocio } from "@/lib/negocios/tipo";
 
 type ImovelEmbed = {
@@ -173,6 +175,15 @@ export default async function NegocioDetalhePage({
         .order("criado_em", { ascending: false })
     : { data: [] };
   const handoffs = (handoffsData ?? []) as unknown as HandoffHumanoResumo[];
+  const { data: repescagemData } = await supabase
+    .from("negocio_repescagens")
+    .select(
+      "id, negocio_id, comprador_id, criado_por, motivo_perda, origem, status, aceita_similares, resposta_lead, parar_cadencia, tentativas, proxima_tentativa_em, ultima_tentativa_em, imoveis_recomendados, automacao_execucao_id, encerrado_em, criado_em, atualizado_em",
+    )
+    .eq("negocio_id", negocio.id)
+    .maybeSingle();
+  const repescagem =
+    (repescagemData as unknown as RepescagemResumo | null) ?? null;
   const { data: qualificacaoData } = await supabase
     .from("negocio_qualificacoes")
     .select(
@@ -196,6 +207,16 @@ export default async function NegocioDetalhePage({
       : { data: [] };
   const ticketsPosConclusao =
     (ticketsPosConclusaoData ?? []) as TicketPosConclusaoResumo[];
+  const podeOperarRepescagem =
+    Boolean(sessao?.isAdmin) ||
+    papeisUsuario.some((papel) =>
+      ["proprietario", "corretor", "admin"].includes(papel),
+    );
+  const podeResponderRepescagem =
+    Boolean(sessao?.isAdmin) ||
+    papeisUsuario.some((papel) =>
+      ["comprador", "proprietario", "corretor", "admin"].includes(papel),
+    );
 
   return (
     <div className="flex flex-col gap-6">
@@ -284,6 +305,14 @@ export default async function NegocioDetalhePage({
         qualificacao={qualificacao}
         papeisUsuario={papeisUsuario}
         tipoNegocio={tipoNegocio}
+      />
+
+      <RepescagemLeadCard
+        negocioId={negocio.id}
+        statusNegocio={negocio.status}
+        repescagem={repescagem}
+        podeOperar={podeOperarRepescagem}
+        podeResponder={podeResponderRepescagem}
       />
 
       {(servico || podeContratarServico) && (

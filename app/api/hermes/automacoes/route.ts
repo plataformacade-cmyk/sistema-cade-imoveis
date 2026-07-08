@@ -13,6 +13,7 @@ const JOBS = new Set<JobAutomacaoHermes>([
   "todos",
   "suporte_temas",
   "negocios_travados",
+  "repescagem_leads",
   "precos_bairro",
   "saude_sistema",
 ]);

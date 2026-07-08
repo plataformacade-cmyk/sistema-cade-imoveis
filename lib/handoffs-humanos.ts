@@ -54,6 +54,7 @@ const ROTULOS_RESULTADO: Record<ResultadoHandoffHumano, string> = {
 
 const ROTULOS_ORIGEM: Record<string, string> = {
   hermes_negocio_travado: "Hermes: negocio travado",
+  hermes_repescagem: "Hermes: repescagem",
   followup_externo: "Follow-up externo",
   manual: "Manual",
 };

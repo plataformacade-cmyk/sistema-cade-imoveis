@@ -144,6 +144,7 @@ Jobs aceitos:
 - `todos`
 - `suporte_temas`
 - `negocios_travados`
+- `repescagem_leads`
 - `precos_bairro`
 - `saude_sistema`
 
@@ -207,6 +208,7 @@ Essa rota executa jobs manuais com idempotencia em
 - temas recorrentes de suporte nos ultimos 7 dias;
 - negocios travados sem atualizacao ha mais de 3 dias;
 - handoffs humanos em `negocio_handoffs_humanos` para operador/corretor assumir leads travados;
+- repescagem de negocios perdidos em `negocio_repescagens`, com motivo, aceite de similares, imoveis recomendados, resposta do lead e opt-out de cadencia;
 - comparacao inicial de preco por bairro/tipo/operacao, com alerta para desvio acima de 25%;
 - saude do sistema baseada em contadores operacionais.
 
